@@ -48,7 +48,7 @@
 
 	function handleDragLeave(e: DragEvent, type: string) {
 		const related = e.relatedTarget as HTMLElement | null;
-		const column = (e.currentTarget as HTMLElement);
+		const column = e.currentTarget as HTMLElement;
 		if (related && column.contains(related)) return;
 		if (dragOverColumn === type) dragOverColumn = null;
 	}
@@ -238,7 +238,9 @@
 		border-radius: 6px;
 		padding: 8px 10px;
 		cursor: grab;
-		transition: opacity 0.15s, box-shadow 0.15s;
+		transition:
+			opacity 0.15s,
+			box-shadow 0.15s;
 	}
 
 	.kanban-card:hover {

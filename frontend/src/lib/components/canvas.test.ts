@@ -132,9 +132,7 @@ describe('extractBodyText', () => {
 	it('truncates to maxLength', () => {
 		const doc = {
 			type: 'doc',
-			content: [
-				{ type: 'paragraph', content: [{ type: 'text', text: 'A'.repeat(200) }] }
-			]
+			content: [{ type: 'paragraph', content: [{ type: 'text', text: 'A'.repeat(200) }] }]
 		};
 		expect(extractBodyText(doc, 50)).toHaveLength(50);
 	});
@@ -222,9 +220,7 @@ describe('NoteCard', () => {
 	it('renders body preview from TipTap JSON', () => {
 		const body = {
 			type: 'doc',
-			content: [
-				{ type: 'paragraph', content: [{ type: 'text', text: 'Rich text preview' }] }
-			]
+			content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Rich text preview' }] }]
 		};
 		const node = makeNode({ body });
 		const { getByText } = render(NoteCard, {

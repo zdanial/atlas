@@ -94,11 +94,7 @@
 	ondblclick={handleDblClick}
 >
 	<div class="note-header">
-		<button
-			class="type-badge"
-			style:background-color={colors.badge}
-			onclick={handleBadgeClick}
-		>
+		<button class="type-badge" style:background-color={colors.badge} onclick={handleBadgeClick}>
 			{node.type}
 		</button>
 
@@ -134,11 +130,7 @@
 	{/if}
 
 	{#if isEditing}
-		<NoteEditor
-			content={node.body}
-			onSave={handleEditorSave}
-			onBlur={handleEditorBlur}
-		/>
+		<NoteEditor content={node.body} onSave={handleEditorSave} onBlur={handleEditorBlur} />
 	{:else if bodyPreview}
 		<p class="note-body">{bodyPreview}</p>
 	{/if}
@@ -166,12 +158,16 @@
 	}
 
 	.note-card:hover {
-		box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 4px 12px rgba(0, 0, 0, 0.4);
+		box-shadow:
+			0 0 0 1px rgba(255, 255, 255, 0.1),
+			0 4px 12px rgba(0, 0, 0, 0.4);
 	}
 
 	.note-card.dragging {
 		cursor: grabbing;
-		box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2), 0 8px 24px rgba(0, 0, 0, 0.5);
+		box-shadow:
+			0 0 0 2px rgba(255, 255, 255, 0.2),
+			0 8px 24px rgba(0, 0, 0, 0.5);
 		z-index: 1000;
 	}
 

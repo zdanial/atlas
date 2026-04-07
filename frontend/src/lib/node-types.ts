@@ -48,7 +48,12 @@ export function extractBodyText(body: Record<string, unknown> | null, maxLength 
 	if (body.type === 'doc' && Array.isArray(body.content)) {
 		const parts: string[] = [];
 		for (const block of body.content) {
-			if (block && typeof block === 'object' && 'content' in block && Array.isArray(block.content)) {
+			if (
+				block &&
+				typeof block === 'object' &&
+				'content' in block &&
+				Array.isArray(block.content)
+			) {
 				for (const inline of block.content) {
 					if (inline && typeof inline === 'object' && 'text' in inline) {
 						parts.push(String(inline.text));

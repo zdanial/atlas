@@ -4,12 +4,7 @@
 	import KanbanView from '$lib/components/KanbanView.svelte';
 	import { createStorage } from '$lib/storage';
 	import type { Node } from '$lib/storage/adapter';
-	import {
-		initStore,
-		projectNodes,
-		createNode,
-		updateNode
-	} from '$lib/stores/nodes';
+	import { initStore, projectNodes, createNode, updateNode } from '$lib/stores/nodes';
 	import type { UpdateNodeInput } from '$lib/schemas/node';
 
 	type ViewMode = 'canvas' | 'kanban';

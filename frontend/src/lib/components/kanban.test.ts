@@ -81,9 +81,7 @@ describe('KanbanView', () => {
 				title: 'With Body',
 				body: {
 					type: 'doc',
-					content: [
-						{ type: 'paragraph', content: [{ type: 'text', text: 'Card preview text' }] }
-					]
+					content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Card preview text' }] }]
 				}
 			})
 		];
