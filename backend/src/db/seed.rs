@@ -18,24 +18,20 @@ pub async fn seed_defaults(pool: &Pool) -> anyhow::Result<()> {
     let workspace_id = Uuid::new_v4();
     let project_id = Uuid::new_v4();
 
-    sqlx::query(
-        "INSERT INTO workspace (id, name, slug) VALUES ($1, $2, $3)",
-    )
-    .bind(workspace_id)
-    .bind("Default Workspace")
-    .bind("default")
-    .execute(pool)
-    .await?;
+    sqlx::query("INSERT INTO workspace (id, name, slug) VALUES ($1, $2, $3)")
+        .bind(workspace_id)
+        .bind("Default Workspace")
+        .bind("default")
+        .execute(pool)
+        .await?;
 
-    sqlx::query(
-        "INSERT INTO project (id, workspace_id, name, slug) VALUES ($1, $2, $3, $4)",
-    )
-    .bind(project_id)
-    .bind(workspace_id)
-    .bind("My First Project")
-    .bind("my-first-project")
-    .execute(pool)
-    .await?;
+    sqlx::query("INSERT INTO project (id, workspace_id, name, slug) VALUES ($1, $2, $3, $4)")
+        .bind(project_id)
+        .bind(workspace_id)
+        .bind("My First Project")
+        .bind("my-first-project")
+        .execute(pool)
+        .await?;
 
     tracing::info!(
         workspace_id = %workspace_id,

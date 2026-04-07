@@ -31,8 +31,12 @@ async fn main() -> anyhow::Result<()> {
     let broadcast = Arc::new(ws::WsBroadcast::new(256));
 
     let allowed_origins = [
-        "http://localhost:5173".parse::<http::HeaderValue>().unwrap(),
-        "http://localhost:6200".parse::<http::HeaderValue>().unwrap(),
+        "http://localhost:5173"
+            .parse::<http::HeaderValue>()
+            .unwrap(),
+        "http://localhost:6200"
+            .parse::<http::HeaderValue>()
+            .unwrap(),
     ];
     let cors = CorsLayer::new()
         .allow_origin(allowed_origins)

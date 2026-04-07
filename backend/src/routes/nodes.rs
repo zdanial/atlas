@@ -38,6 +38,7 @@ pub struct CreateNodeBody {
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateNodeBody {
+    pub r#type: Option<String>,
     pub title: Option<String>,
     pub body: Option<Value>,
     pub payload: Option<Value>,
@@ -72,7 +73,7 @@ pub struct CreateAgentRunBody {
     pub input: Option<Value>,
     pub output: Option<Value>,
     pub model: Option<String>,
-    pub tokens: Option<i32>,
+    pub tokens: Option<i64>,
     pub cost: Option<f64>,
 }
 
@@ -112,10 +113,9 @@ pub struct ErrorResponse {
 }
 
 // ---------------------------------------------------------------------------
-// SQL dialect helpers
+// SQL constants
 // ---------------------------------------------------------------------------
 
-/// List nodes query — Postgres uses typed casts, SQLite uses plain IS NULL.
 #[cfg(not(feature = "sqlite"))]
 const LIST_NODES_SQL: &str = "\
     SELECT id, type, layer, project_id, parent_id, title, body, payload, \
@@ -150,8 +150,7 @@ const SEARCH_NODES_SQL: &str = "\
     AND ($3::text IS NULL OR type = $3) \
     AND ($4::int IS NULL OR layer = $4) \
     AND ($5::text IS NULL OR status = $5) \
-    ORDER BY created_at DESC \
-    LIMIT 100";
+    ORDER BY created_at DESC";
 
 #[cfg(feature = "sqlite")]
 const SEARCH_NODES_SQL: &str = "\
@@ -163,19 +162,19 @@ const SEARCH_NODES_SQL: &str = "\
     AND ($3 IS NULL OR type = $3) \
     AND ($4 IS NULL OR layer = $4) \
     AND ($5 IS NULL OR status = $5) \
-    ORDER BY created_at DESC \
-    LIMIT 100";
+    ORDER BY created_at DESC";
 
 #[cfg(not(feature = "sqlite"))]
 const UPDATE_NODE_SQL: &str = "\
     UPDATE node SET \
-    title = COALESCE($2, title), \
-    body = COALESCE($3, body), \
-    payload = COALESCE($4, payload), \
-    status = COALESCE($5, status), \
-    position_x = COALESCE($6, position_x), \
-    position_y = COALESCE($7, position_y), \
-    parent_id = COALESCE($8, parent_id), \
+    type = COALESCE($2, type), \
+    title = COALESCE($3, title), \
+    body = COALESCE($4, body), \
+    payload = COALESCE($5, payload), \
+    status = COALESCE($6, status), \
+    position_x = COALESCE($7, position_x), \
+    position_y = COALESCE($8, position_y), \
+    parent_id = COALESCE($9, parent_id), \
     updated_at = now() \
     WHERE id = $1 \
     RETURNING id, type, layer, project_id, parent_id, title, body, payload, \
@@ -184,13 +183,14 @@ const UPDATE_NODE_SQL: &str = "\
 #[cfg(feature = "sqlite")]
 const UPDATE_NODE_SQL: &str = "\
     UPDATE node SET \
-    title = COALESCE($2, title), \
-    body = COALESCE($3, body), \
-    payload = COALESCE($4, payload), \
-    status = COALESCE($5, status), \
-    position_x = COALESCE($6, position_x), \
-    position_y = COALESCE($7, position_y), \
-    parent_id = COALESCE($8, parent_id), \
+    type = COALESCE($2, type), \
+    title = COALESCE($3, title), \
+    body = COALESCE($4, body), \
+    payload = COALESCE($5, payload), \
+    status = COALESCE($6, status), \
+    position_x = COALESCE($7, position_x), \
+    position_y = COALESCE($8, position_y), \
+    parent_id = COALESCE($9, parent_id), \
     updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') \
     WHERE id = $1 \
     RETURNING id, type, layer, project_id, parent_id, title, body, payload, \
@@ -206,19 +206,21 @@ pub async fn list_nodes(
     Query(query): Query<ListNodesQuery>,
 ) -> Result<Json<NodesResponse>, (StatusCode, Json<ErrorResponse>)> {
     let nodes = sqlx::query_as::<_, models::Node>(LIST_NODES_SQL)
-    .bind(query.project_id)
-    .bind(query.r#type)
-    .bind(query.layer)
-    .bind(query.status)
-    .bind(query.parent_id)
-    .fetch_all(&pool)
-    .await
-    .map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse { error: e.to_string() }),
-        )
-    })?;
+        .bind(query.project_id)
+        .bind(query.r#type)
+        .bind(query.layer)
+        .bind(query.status)
+        .bind(query.parent_id)
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })?;
 
     Ok(Json(NodesResponse { nodes }))
 }
@@ -249,7 +251,9 @@ pub async fn create_node(
     .map_err(|e| {
         (
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse { error: e.to_string() }),
+            Json(ErrorResponse {
+                error: e.to_string(),
+            }),
         )
     })?;
 
@@ -272,7 +276,9 @@ pub async fn get_node(
     .map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse { error: e.to_string() }),
+            Json(ErrorResponse {
+                error: e.to_string(),
+            }),
         )
     })?;
 
@@ -280,7 +286,9 @@ pub async fn get_node(
         Some(n) => Ok(Json(NodeResponse { node: n })),
         None => Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse { error: format!("Node {id} not found") }),
+            Json(ErrorResponse {
+                error: format!("Node {id} not found"),
+            }),
         )),
     }
 }
@@ -292,28 +300,33 @@ pub async fn update_node(
     Json(body): Json<UpdateNodeBody>,
 ) -> Result<Json<NodeResponse>, (StatusCode, Json<ErrorResponse>)> {
     let node = sqlx::query_as::<_, models::Node>(UPDATE_NODE_SQL)
-    .bind(id)
-    .bind(&body.title)
-    .bind(&body.body)
-    .bind(&body.payload)
-    .bind(&body.status)
-    .bind(body.position_x)
-    .bind(body.position_y)
-    .bind(body.parent_id)
-    .fetch_optional(&pool)
-    .await
-    .map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse { error: e.to_string() }),
-        )
-    })?;
+        .bind(id)
+        .bind(&body.r#type)
+        .bind(&body.title)
+        .bind(&body.body)
+        .bind(&body.payload)
+        .bind(&body.status)
+        .bind(body.position_x)
+        .bind(body.position_y)
+        .bind(body.parent_id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })?;
 
     match node {
         Some(n) => Ok(Json(NodeResponse { node: n })),
         None => Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse { error: format!("Node {id} not found") }),
+            Json(ErrorResponse {
+                error: format!("Node {id} not found"),
+            }),
         )),
     }
 }
@@ -330,14 +343,18 @@ pub async fn delete_node(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse { error: e.to_string() }),
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
             )
         })?;
 
     if result.rows_affected() == 0 {
         return Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse { error: format!("Node {id} not found") }),
+            Json(ErrorResponse {
+                error: format!("Node {id} not found"),
+            }),
         ));
     }
 
@@ -360,7 +377,9 @@ pub async fn list_node_edges(
     .map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse { error: e.to_string() }),
+            Json(ErrorResponse {
+                error: e.to_string(),
+            }),
         )
     })?;
 
@@ -388,7 +407,9 @@ pub async fn create_node_edge(
     .map_err(|e| {
         (
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse { error: e.to_string() }),
+            Json(ErrorResponse {
+                error: e.to_string(),
+            }),
         )
     })?;
 
@@ -407,14 +428,18 @@ pub async fn delete_edge(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse { error: e.to_string() }),
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
             )
         })?;
 
     if result.rows_affected() == 0 {
         return Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse { error: format!("Edge {id} not found") }),
+            Json(ErrorResponse {
+                error: format!("Edge {id} not found"),
+            }),
         ));
     }
 
@@ -437,7 +462,9 @@ pub async fn list_node_versions(
     .map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse { error: e.to_string() }),
+            Json(ErrorResponse {
+                error: e.to_string(),
+            }),
         )
     })?;
 
@@ -451,19 +478,21 @@ pub async fn search_nodes(
 ) -> Result<Json<NodesResponse>, (StatusCode, Json<ErrorResponse>)> {
     let pattern = format!("%{}%", query.q);
     let nodes = sqlx::query_as::<_, models::Node>(SEARCH_NODES_SQL)
-    .bind(&pattern)
-    .bind(query.project_id)
-    .bind(query.r#type)
-    .bind(query.layer)
-    .bind(query.status)
-    .fetch_all(&pool)
-    .await
-    .map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse { error: e.to_string() }),
-        )
-    })?;
+        .bind(&pattern)
+        .bind(query.project_id)
+        .bind(query.r#type)
+        .bind(query.layer)
+        .bind(query.status)
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })?;
 
     Ok(Json(NodesResponse { nodes }))
 }
@@ -490,9 +519,14 @@ pub async fn create_agent_run(
     .map_err(|e| {
         (
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse { error: e.to_string() }),
+            Json(ErrorResponse {
+                error: e.to_string(),
+            }),
         )
     })?;
 
-    Ok((StatusCode::CREATED, Json(AgentRunResponse { agent_run: run })))
+    Ok((
+        StatusCode::CREATED,
+        Json(AgentRunResponse { agent_run: run }),
+    ))
 }

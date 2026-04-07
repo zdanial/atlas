@@ -3,9 +3,12 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  plugins: [tailwindcss(), sveltekit()],
-  test: {
-    include: ['src/**/*.test.ts'],
-    environment: 'jsdom',
-  },
+	plugins: [tailwindcss(), sveltekit()],
+	test: {
+		include: ['src/**/*.test.ts'],
+		environment: 'jsdom'
+	},
+	resolve: {
+		conditions: ['browser']
+	}
 });

@@ -18,10 +18,7 @@ pub async fn connect(url: &str) -> Result<Pool, sqlx::Error> {
 #[cfg(not(feature = "sqlite"))]
 pub async fn connect(url: &str) -> Result<Pool, sqlx::Error> {
     use sqlx::postgres::PgPoolOptions;
-    PgPoolOptions::new()
-        .max_connections(10)
-        .connect(url)
-        .await
+    PgPoolOptions::new().max_connections(10).connect(url).await
 }
 
 /// Run migrations from the appropriate directory.

@@ -248,13 +248,8 @@ mod tests {
 
         let router = app(&pool).await;
         let fake_id = uuid::Uuid::new_v4();
-        let (status, body) = json_request(
-            router,
-            Method::GET,
-            &format!("/api/nodes/{fake_id}"),
-            None,
-        )
-        .await;
+        let (status, body) =
+            json_request(router, Method::GET, &format!("/api/nodes/{fake_id}"), None).await;
         assert_eq!(status, StatusCode::NOT_FOUND);
         assert!(body["error"].as_str().unwrap().contains("not found"));
     }
