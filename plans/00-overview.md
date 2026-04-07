@@ -96,3 +96,6 @@ Every view has a timeline scrubber. Scrub backward to see the exact state of you
 
 ### User-Facing
 - `14-user-flows.md` — All user flows end-to-end: brain dump, compilation, export, onboarding, settings, temporal nav
+
+### Execution
+- `15-execution-plan.md` — 65 self-contained work packages with dependency DAG, parallelization waves, critical path analysis — designed for agent swarm execution
