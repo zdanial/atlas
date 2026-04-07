@@ -1,3 +1,4 @@
+import { SvelteMap } from 'svelte/reactivity';
 import type {
 	Node,
 	CreateNode,
@@ -19,11 +20,11 @@ import {
 // Store state (Svelte 5 runes — must be used in a component or $effect scope)
 // ---------------------------------------------------------------------------
 
-/** All nodes indexed by id. */
-let nodeMap = $state<Map<string, Node>>(new Map());
+/** All nodes indexed by id. SvelteMap so .set()/.delete() are reactive. */
+let nodeMap = new SvelteMap<string, Node>();
 
-/** All edges indexed by id. */
-let edgeMap = $state<Map<string, NodeEdge>>(new Map());
+/** All edges indexed by id. SvelteMap so .set()/.delete() are reactive. */
+let edgeMap = new SvelteMap<string, NodeEdge>();
 
 /** Current project filter. */
 let currentProjectId = $state<string | null>(null);
@@ -35,26 +36,31 @@ let storage: StorageAdapter | null = null;
 // Derived views
 // ---------------------------------------------------------------------------
 
-/** All nodes for the current project. */
-export const projectNodes = $derived(
+/** All nodes for the current project (private derived, exposed via getter). */
+const _projectNodes = $derived(
 	currentProjectId
 		? Array.from(nodeMap.values()).filter((n) => n.projectId === currentProjectId)
 		: Array.from(nodeMap.values())
 );
 
+/** All nodes for the current project. */
+export function getProjectNodes(): Node[] {
+	return _projectNodes;
+}
+
 /** Nodes filtered by type. */
 export function nodesByType(type: NodeType): Node[] {
-	return projectNodes.filter((n) => n.type === type);
+	return _projectNodes.filter((n) => n.type === type);
 }
 
 /** Nodes filtered by layer. */
 export function nodesByLayer(layer: number): Node[] {
-	return projectNodes.filter((n) => n.layer === layer);
+	return _projectNodes.filter((n) => n.layer === layer);
 }
 
 /** Nodes filtered by status. */
 export function nodesByStatus(status: string): Node[] {
-	return projectNodes.filter((n) => n.status === status);
+	return _projectNodes.filter((n) => n.status === status);
 }
 
 /** Get a single node by id. */
@@ -62,12 +68,17 @@ export function getNode(id: string): Node | undefined {
 	return nodeMap.get(id);
 }
 
+/** All edges as array (private derived, exposed via getter). */
+const _allEdges = $derived(Array.from(edgeMap.values()));
+
 /** All edges as array. */
-export const allEdges = $derived(Array.from(edgeMap.values()));
+export function getAllEdges(): NodeEdge[] {
+	return _allEdges;
+}
 
 /** Edges for a specific node. */
 export function edgesForNode(nodeId: string): NodeEdge[] {
-	return allEdges.filter((e) => e.sourceId === nodeId || e.targetId === nodeId);
+	return _allEdges.filter((e) => e.sourceId === nodeId || e.targetId === nodeId);
 }
 
 // ---------------------------------------------------------------------------
@@ -206,8 +217,8 @@ export async function loadEdges(nodeId: string): Promise<NodeEdge[]> {
 
 /** Clear all state (useful for tests or switching workspaces). */
 export function resetStore() {
-	nodeMap = new Map();
-	edgeMap = new Map();
+	nodeMap.clear();
+	edgeMap.clear();
 	currentProjectId = null;
 	storage = null;
 }

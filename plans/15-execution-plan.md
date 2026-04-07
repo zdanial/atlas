@@ -81,11 +81,11 @@ WAVE 10 ────────────────────────
 - AGPLv3 LICENSE, CONTRIBUTING.md, CLAUDE.md
 
 **Acceptance Criteria:**
-- [ ] `pnpm dev` starts SvelteKit on :5173
-- [ ] `cargo run` starts Axum on :3001
-- [ ] `cargo test` passes (at least 1 migration test)
-- [ ] `pnpm test` passes (at least 1 adapter test)
-- [ ] CI pipeline runs green on push
+- [x] `pnpm dev` starts SvelteKit on :5173
+- [x] `cargo run` starts Axum on :3001
+- [x] `cargo test` passes (at least 1 migration test)
+- [x] `pnpm test` passes (at least 1 adapter test)
+- [x] CI pipeline runs green on push
 
 ---
 
@@ -103,10 +103,10 @@ WAVE 10 ────────────────────────
 - Canvas background (dots/grid pattern)
 
 **Acceptance Criteria:**
-- [ ] Canvas renders 50+ notes without jank
-- [ ] Pan and zoom are smooth (no CSS transition artifacts)
-- [ ] Notes display at correct spatial positions
-- [ ] Double-click creates a note at cursor position
+- [x] Canvas renders 50+ notes without jank
+- [x] Pan and zoom are smooth (no CSS transition artifacts)
+- [x] Notes display at correct spatial positions
+- [x] Double-click creates a note at cursor position
 
 ---
 
@@ -124,11 +124,11 @@ WAVE 10 ────────────────────────
 - Rust CRUD API routes: `GET/POST /api/nodes`, `GET/PATCH/DELETE /api/nodes/:id`, `GET/POST /api/nodes/:id/edges`
 
 **Acceptance Criteria:**
-- [ ] Create, read, update, delete nodes via store
-- [ ] Data persists across page reload (IndexedDB)
-- [ ] Zod validation rejects invalid payloads with correct errors
-- [ ] Rust API routes return correct responses (tested with cargo test)
-- [ ] ≥90% unit test coverage on stores + adapters
+- [x] Create, read, update, delete nodes via store
+- [x] Data persists across page reload (IndexedDB)
+- [x] Zod validation rejects invalid payloads with correct errors
+- [x] Rust API routes return correct responses (tested with cargo test)
+- [x] ≥90% unit test coverage on stores + adapters
 
 ---
 
@@ -144,10 +144,10 @@ WAVE 10 ────────────────────────
 - `DATABASE_URL` env var for Rust connection
 
 **Acceptance Criteria:**
-- [ ] `ApiAdapter` passes same test suite as `IndexedDBAdapter`
-- [ ] Rust backend serves CRUD over REST correctly
-- [ ] SQLite mode compiles and passes tests via `cargo test --features sqlite`
-- [ ] WebSocket connects and receives node change events
+- [x] `ApiAdapter` passes same test suite as `IndexedDBAdapter`
+- [x] Rust backend serves CRUD over REST correctly
+- [x] SQLite mode compiles and passes tests via `cargo test --features sqlite`
+- [x] WebSocket connects and receives node change events
 
 ---
 
@@ -163,10 +163,10 @@ WAVE 10 ────────────────────────
 - Type-specific color coding on note card borders/headers
 
 **Acceptance Criteria:**
-- [ ] Double-click note → editor active with cursor
-- [ ] Markdown shortcuts work (type `# ` → heading, `- ` → bullet)
-- [ ] Type selector changes note type and persists
-- [ ] Rich text body saved as TipTap JSON in `node.body`
+- [x] Double-click note → editor active with cursor
+- [x] Markdown shortcuts work (type `# ` → heading, `- ` → bullet)
+- [x] Type selector changes note type and persists
+- [x] Rich text body saved as TipTap JSON in `node.body`
 
 ---
 
@@ -181,10 +181,10 @@ WAVE 10 ────────────────────────
 - Column counts, empty column placeholder
 
 **Acceptance Criteria:**
-- [ ] All note types have a column
-- [ ] Dragging a note to a different column changes its type
-- [ ] Column counts update in real-time
-- [ ] Works with same data as canvas (shared store)
+- [x] All note types have a column
+- [x] Dragging a note to a different column changes its type
+- [x] Column counts update in real-time
+- [x] Works with same data as canvas (shared store)
 
 ---
 
@@ -205,11 +205,11 @@ WAVE 10 ────────────────────────
 - Eval harness: 50 sample notes, assert ≥85% accuracy
 
 **Acceptance Criteria:**
-- [ ] `callModel(Capability::Classification, ...)` routes to correct provider
-- [ ] Classifier returns valid note type + confidence for free text
-- [ ] Batch classification processes 20 notes in <10s
-- [ ] Eval suite passes ≥85% accuracy threshold
-- [ ] Missing API key → graceful degradation (notes stay unclassified)
+- [x] `callModel(Capability::Classification, ...)` routes to correct provider
+- [ ] Classifier returns valid note type + confidence for free text (stubbed — needs live API keys)
+- [ ] Batch classification processes 20 notes in <10s (stubbed — needs live API keys)
+- [ ] Eval suite passes ≥85% accuracy threshold (stubbed — needs live API keys)
+- [x] Missing API key → graceful degradation (notes stay unclassified)
 
 ---
 
@@ -226,10 +226,10 @@ WAVE 10 ────────────────────────
 - Intent list view in sidebar
 
 **Acceptance Criteria:**
-- [ ] Create/edit/delete intents with name, target outcome, deadline, status
-- [ ] Notes can be linked to intents via edge
-- [ ] Orphan epic detection surfaces unlinked epics
-- [ ] Status transitions work correctly
+- [x] Create/edit/delete intents with name, target outcome, deadline, status
+- [x] Notes can be linked to intents via edge (parentId linking)
+- [ ] Orphan epic detection surfaces unlinked epics (UI indicator not yet added)
+- [x] Status transitions work correctly
 
 ---
 
@@ -246,11 +246,11 @@ WAVE 10 ────────────────────────
 - Cross-project search: `⌘K` finds nodes across all projects with project badge
 
 **Acceptance Criteria:**
-- [ ] Create 3 projects, switch between them
-- [ ] Each project has independent canvas/node data
-- [ ] Notes in Global Pool can be dragged to a project
-- [ ] Search finds nodes across projects with correct project badges
-- [ ] Project switcher hidden when only 1 project exists
+- [x] Create 3 projects, switch between them
+- [x] Each project has independent canvas/node data
+- [ ] Notes in Global Pool can be dragged to a project (Global Pool view not yet built)
+- [ ] Search finds nodes across projects with correct project badges (⌘K not yet built)
+- [ ] Project switcher hidden when only 1 project exists (always visible for now)
 
 ---
 
@@ -265,9 +265,9 @@ WAVE 10 ────────────────────────
 - Frontend types + Zod schemas for import_source and import_mapping
 
 **Acceptance Criteria:**
-- [ ] Import sources can be created and listed per project
-- [ ] Import mappings track external_id → node_id relationship
-- [ ] API routes tested with cargo test
+- [x] Import sources can be created and listed per project
+- [x] Import mappings track external_id → node_id relationship
+- [ ] API routes tested with cargo test (needs DB integration test)
 
 ---
 
@@ -284,10 +284,10 @@ WAVE 10 ────────────────────────
 - Records import_source (type='paste') and import_mappings
 
 **Acceptance Criteria:**
-- [ ] Pasting 5 paragraphs creates 5+ classified notes
-- [ ] Notes placed on canvas with reasonable spacing
-- [ ] Inferred edges connect related notes
-- [ ] User can review split before confirming
+- [x] Pasting 5 paragraphs creates 5+ classified notes
+- [x] Notes placed on canvas with reasonable spacing
+- [ ] Inferred edges connect related notes (heuristic parser detects relations; edge creation on import not yet wired)
+- [x] User can review split before confirming
 
 ---
 
