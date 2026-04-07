@@ -8,12 +8,21 @@ importers:
 
   .:
     dependencies:
+      '@tanstack/query-core':
+        specifier: ^5.96.2
+        version: 5.96.2
+      '@tanstack/svelte-query':
+        specifier: ^6.1.13
+        version: 6.1.13(svelte@5.55.1)
       dexie:
         specifier: ^4.4.2
         version: 4.4.2
       uuid:
         specifier: ^13.0.0
         version: 13.0.0
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@sveltejs/adapter-auto':
         specifier: ^7.0.0
@@ -641,6 +650,14 @@ packages:
     resolution: {integrity: sha512-mEiF5HO1QqCLXoNEfXVA1Tzo+cYsrqV7w9Juj2wdUFyW07JRenqMG225MvPwr3ZD9N1bFQj46X7r33iHxLUW0w==}
     peerDependencies:
       vite: ^5.2.0 || ^6 || ^7 || ^8
+
+  '@tanstack/query-core@5.96.2':
+    resolution: {integrity: sha512-hzI6cTVh4KNRk8UtoIBS7Lv9g6BnJPXvBKsvYH1aGWvv0347jT3BnSvztOE+kD76XGvZnRC/t6qdW1CaIfwCeA==}
+
+  '@tanstack/svelte-query@6.1.13':
+    resolution: {integrity: sha512-A/BB9BuRoPSEJZqVUU5sqcAgi13XdfldlJtd8XmbwAXr/fxEMfpSEMYmIxLmUb/s9EVYRJi3bew9OjZddkx0cg==}
+    peerDependencies:
+      svelte: ^5.25.0
 
   '@testing-library/dom@10.4.1':
     resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}
@@ -1315,6 +1332,9 @@ packages:
   zimmerframe@1.1.4:
     resolution: {integrity: sha512-B58NGBEoc8Y9MWWCQGl/gq9xBCe4IiKM0a2x7GZdQKOW5Exr8S1W24J6OgM1njK8xCRGvAJIL/MxXHf6SkmQKQ==}
 
+  zod@4.3.6:
+    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
+
 snapshots:
 
   '@asamuzakjp/css-color@5.1.6':
@@ -1724,6 +1744,13 @@ snapshots:
       '@tailwindcss/oxide': 4.2.2
       tailwindcss: 4.2.2
       vite: 7.3.2(jiti@2.6.1)(lightningcss@1.32.0)
+
+  '@tanstack/query-core@5.96.2': {}
+
+  '@tanstack/svelte-query@6.1.13(svelte@5.55.1)':
+    dependencies:
+      '@tanstack/query-core': 5.96.2
+      svelte: 5.55.1
 
   '@testing-library/dom@10.4.1':
     dependencies:
@@ -2340,3 +2367,5 @@ snapshots:
   xmlchars@2.2.0: {}
 
   zimmerframe@1.1.4: {}
+
+  zod@4.3.6: {}

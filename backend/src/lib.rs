@@ -1,5 +1,6 @@
 pub mod db;
 pub mod routes;
+pub mod ws;
 
 use axum::Router;
 

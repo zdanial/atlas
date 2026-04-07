@@ -4,8 +4,12 @@ version = "0.1.0"
 edition = "2021"
 license = "AGPL-3.0-or-later"
 
+[features]
+default = []
+sqlite = ["sqlx/sqlite"]
+
 [dependencies]
-axum = "0.8"
+axum = { version = "0.8", features = ["ws"] }
 tokio = { version = "1", features = ["full"] }
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "chrono", "json", "migrate"] }
 serde = { version = "1", features = ["derive"] }
