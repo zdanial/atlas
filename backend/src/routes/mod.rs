@@ -29,7 +29,10 @@ pub fn router() -> Router<Pool> {
         .route("/api/health", get(health_with_state))
         .route("/api/workspaces", get(list_workspaces))
         // Node CRUD
-        .route("/api/nodes", get(nodes::list_nodes).post(nodes::create_node))
+        .route(
+            "/api/nodes",
+            get(nodes::list_nodes).post(nodes::create_node),
+        )
         .route(
             "/api/nodes/{id}",
             get(nodes::get_node)

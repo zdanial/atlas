@@ -23,7 +23,11 @@ pub enum WsEvent {
     #[serde(rename = "node.deleted")]
     NodeDeleted { node_id: String, project_id: String },
     #[serde(rename = "edge.created")]
-    EdgeCreated { edge_id: String, source_id: String, target_id: String },
+    EdgeCreated {
+        edge_id: String,
+        source_id: String,
+        target_id: String,
+    },
     #[serde(rename = "edge.deleted")]
     EdgeDeleted { edge_id: String },
 }
