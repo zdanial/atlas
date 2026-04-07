@@ -17,7 +17,12 @@ export const NODE_TYPES: Record<string, NodeTypeConfig> = {
 	hypothesis: { label: 'Hypothesis', bg: '#1f1a2a', badge: '#a855f7', border: '#9333ea' },
 	insight: { label: 'Insight', bg: '#1a2a1f', badge: '#10b981', border: '#059669' },
 	reference: { label: 'Reference', bg: '#1a1f2a', badge: '#3b82f6', border: '#2563eb' },
-	task: { label: 'Task', bg: '#1f1f1a', badge: '#eab308', border: '#ca8a04' }
+	bet: { label: 'Bet', bg: '#2a1a2a', badge: '#ec4899', border: '#db2777' },
+	task: { label: 'Task', bg: '#1f1f1a', badge: '#eab308', border: '#ca8a04' },
+	intent: { label: 'Intent', bg: '#1a2a2a', badge: '#14b8a6', border: '#0d9488' },
+	epic: { label: 'Epic', bg: '#1a1f2a', badge: '#6366f1', border: '#4f46e5' },
+	phase: { label: 'Phase', bg: '#1a1a2a', badge: '#818cf8', border: '#6366f1' },
+	ticket: { label: 'Ticket', bg: '#1f1f1a', badge: '#facc15', border: '#eab308' }
 };
 
 export const NODE_TYPE_KEYS = Object.keys(NODE_TYPES);

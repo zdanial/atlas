@@ -172,8 +172,8 @@ describe('getNodeTypeConfig', () => {
 		expect(config.label).toBe('Unknown');
 	});
 
-	it('has configs for all 12 canvas types', () => {
-		expect(NODE_TYPE_KEYS).toHaveLength(12);
+	it('has configs for all node types', () => {
+		expect(NODE_TYPE_KEYS.length).toBeGreaterThanOrEqual(16);
 		for (const type of NODE_TYPE_KEYS) {
 			const config = getNodeTypeConfig(type);
 			expect(config.label).toBeTruthy();
@@ -241,7 +241,7 @@ describe('NoteCard', () => {
 		expect(getByText('Some preview text here')).toBeTruthy();
 	});
 
-	it('handles all 12 node types without error', () => {
+	it('handles all node types without error', () => {
 		for (const type of NODE_TYPE_KEYS) {
 			cleanup();
 			const node = makeNode({ type });

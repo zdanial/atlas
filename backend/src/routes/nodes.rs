@@ -38,6 +38,7 @@ pub struct CreateNodeBody {
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateNodeBody {
+    pub r#type: Option<String>,
     pub title: Option<String>,
     pub body: Option<Value>,
     pub payload: Option<Value>,
@@ -169,13 +170,14 @@ const SEARCH_NODES_SQL: &str = "\
 #[cfg(not(feature = "sqlite"))]
 const UPDATE_NODE_SQL: &str = "\
     UPDATE node SET \
-    title = COALESCE($2, title), \
-    body = COALESCE($3, body), \
-    payload = COALESCE($4, payload), \
-    status = COALESCE($5, status), \
-    position_x = COALESCE($6, position_x), \
-    position_y = COALESCE($7, position_y), \
-    parent_id = COALESCE($8, parent_id), \
+    type = COALESCE($2, type), \
+    title = COALESCE($3, title), \
+    body = COALESCE($4, body), \
+    payload = COALESCE($5, payload), \
+    status = COALESCE($6, status), \
+    position_x = COALESCE($7, position_x), \
+    position_y = COALESCE($8, position_y), \
+    parent_id = COALESCE($9, parent_id), \
     updated_at = now() \
     WHERE id = $1 \
     RETURNING id, type, layer, project_id, parent_id, title, body, payload, \
@@ -184,13 +186,14 @@ const UPDATE_NODE_SQL: &str = "\
 #[cfg(feature = "sqlite")]
 const UPDATE_NODE_SQL: &str = "\
     UPDATE node SET \
-    title = COALESCE($2, title), \
-    body = COALESCE($3, body), \
-    payload = COALESCE($4, payload), \
-    status = COALESCE($5, status), \
-    position_x = COALESCE($6, position_x), \
-    position_y = COALESCE($7, position_y), \
-    parent_id = COALESCE($8, parent_id), \
+    type = COALESCE($2, type), \
+    title = COALESCE($3, title), \
+    body = COALESCE($4, body), \
+    payload = COALESCE($5, payload), \
+    status = COALESCE($6, status), \
+    position_x = COALESCE($7, position_x), \
+    position_y = COALESCE($8, position_y), \
+    parent_id = COALESCE($9, parent_id), \
     updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') \
     WHERE id = $1 \
     RETURNING id, type, layer, project_id, parent_id, title, body, payload, \
@@ -293,6 +296,7 @@ pub async fn update_node(
 ) -> Result<Json<NodeResponse>, (StatusCode, Json<ErrorResponse>)> {
     let node = sqlx::query_as::<_, models::Node>(UPDATE_NODE_SQL)
     .bind(id)
+    .bind(&body.r#type)
     .bind(&body.title)
     .bind(&body.body)
     .bind(&body.payload)

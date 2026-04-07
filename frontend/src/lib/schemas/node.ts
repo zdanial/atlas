@@ -106,6 +106,7 @@ export const createNodeSchema = z.object({
 export type CreateNodeInput = z.infer<typeof createNodeSchema>;
 
 export const updateNodeSchema = z.object({
+  type: z.enum(NODE_TYPES).optional(),
   title: z.string().min(1).optional(),
   body: z.record(z.string(), z.unknown()).nullable().optional(),
   payload: z.record(z.string(), z.unknown()).nullable().optional(),

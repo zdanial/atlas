@@ -92,6 +92,7 @@ function toCreateBody(input: CreateNode): Record<string, unknown> {
 
 function toUpdateBody(patch: Partial<Node>): Record<string, unknown> {
   const body: Record<string, unknown> = {};
+  if (patch.type !== undefined) body.type = patch.type;
   if (patch.title !== undefined) body.title = patch.title;
   if (patch.body !== undefined) body.body = patch.body;
   if (patch.payload !== undefined) body.payload = patch.payload;
