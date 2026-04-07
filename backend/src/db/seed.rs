@@ -1,7 +1,8 @@
-use sqlx::PgPool;
 use uuid::Uuid;
 
-pub async fn seed_defaults(pool: &PgPool) -> anyhow::Result<()> {
+use super::pool::Pool;
+
+pub async fn seed_defaults(pool: &Pool) -> anyhow::Result<()> {
     // Check if any workspace already exists.
     let row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM workspace")
         .fetch_one(pool)
@@ -18,10 +19,7 @@ pub async fn seed_defaults(pool: &PgPool) -> anyhow::Result<()> {
     let project_id = Uuid::new_v4();
 
     sqlx::query(
-        r#"
-        INSERT INTO workspace (id, name, slug)
-        VALUES ($1, $2, $3)
-        "#,
+        "INSERT INTO workspace (id, name, slug) VALUES ($1, $2, $3)",
     )
     .bind(workspace_id)
     .bind("Default Workspace")
@@ -30,10 +28,7 @@ pub async fn seed_defaults(pool: &PgPool) -> anyhow::Result<()> {
     .await?;
 
     sqlx::query(
-        r#"
-        INSERT INTO project (id, workspace_id, name, slug)
-        VALUES ($1, $2, $3, $4)
-        "#,
+        "INSERT INTO project (id, workspace_id, name, slug) VALUES ($1, $2, $3, $4)",
     )
     .bind(project_id)
     .bind(workspace_id)

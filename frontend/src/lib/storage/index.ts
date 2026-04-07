@@ -1,5 +1,6 @@
 import type { StorageAdapter } from './adapter';
 import { IndexedDBAdapter } from './indexeddb';
+import { ApiAdapter } from './api';
 
 type DeploymentMode = 'local-browser' | 'local-server' | 'supabase';
 
@@ -16,9 +17,10 @@ export function createStorage(): StorageAdapter {
     case 'local-browser':
       return new IndexedDBAdapter();
     case 'local-server':
+      return new ApiAdapter(import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001');
     case 'supabase':
-      // TODO: Implement ApiAdapter and SupabaseAdapter
-      return new IndexedDBAdapter();
+      // TODO: Implement SupabaseAdapter (extends ApiAdapter with Supabase Auth/Realtime)
+      return new ApiAdapter(import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001');
   }
 }
 

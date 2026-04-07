@@ -1,4 +1,5 @@
 pub mod models;
+pub mod pool;
 pub mod seed;
 
 #[cfg(test)]

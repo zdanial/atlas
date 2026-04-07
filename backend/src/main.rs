@@ -1,7 +1,7 @@
-use atlas_server::{db, routes};
+use atlas_server::{db, routes, ws};
 
-use axum::Router;
-use sqlx::postgres::PgPoolOptions;
+use axum::{routing::get, Router};
+use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::EnvFilter;
 
@@ -19,16 +19,16 @@ async fn main() -> anyhow::Result<()> {
         std::env::var("DATABASE_URL").expect("DATABASE_URL must be set in environment or .env");
 
     tracing::info!("Connecting to database...");
-    let pool = PgPoolOptions::new()
-        .max_connections(10)
-        .connect(&database_url)
-        .await?;
+    let pool = db::pool::connect(&database_url).await?;
 
     tracing::info!("Running migrations...");
-    sqlx::migrate!("./migrations").run(&pool).await?;
+    db::pool::run_migrations(&pool).await?;
 
     tracing::info!("Seeding defaults...");
     db::seed::seed_defaults(&pool).await?;
+
+    // WebSocket broadcast channel (capacity: 256 buffered events)
+    let broadcast = Arc::new(ws::WsBroadcast::new(256));
 
     let allowed_origins = [
         "http://localhost:5173".parse::<http::HeaderValue>().unwrap(),
@@ -41,6 +41,7 @@ async fn main() -> anyhow::Result<()> {
 
     let app = Router::new()
         .merge(routes::router())
+        .route("/ws", get(ws::ws_handler).with_state(broadcast))
         .layer(cors)
         .with_state(pool);
 
