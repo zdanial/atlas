@@ -217,7 +217,7 @@ mod tests {
 
     #[test]
     fn parse_findings_unknown_type_falls_back() {
-        let raw = r#"[{"title":"X","node_type":"epic","body":"B","layer":5,"is_unimplemented":false,"confidence":0.5}]"#;
+        let raw = r#"[{"title":"X","node_type":"banana","body":"B","layer":5,"is_unimplemented":false,"confidence":0.5}]"#;
         let findings = parse_findings(raw);
         assert_eq!(findings[0].node_type, "note");
     }
