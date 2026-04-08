@@ -155,8 +155,7 @@ pub async fn analyze_intents(
         let blocking_edges: Vec<&models::NodeEdge> = edges
             .iter()
             .filter(|e| {
-                e.relation_type == "blocks"
-                    && linked_nodes.iter().any(|n| n.id == e.target_id)
+                e.relation_type == "blocks" && linked_nodes.iter().any(|n| n.id == e.target_id)
             })
             .collect();
 

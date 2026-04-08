@@ -290,9 +290,7 @@ pub async fn scan_repo(
 // ---------------------------------------------------------------------------
 
 fn parse_repo_slug(url: &str) -> String {
-    let url = url
-        .trim_end_matches('/')
-        .trim_end_matches(".git");
+    let url = url.trim_end_matches('/').trim_end_matches(".git");
     if let Some(slug) = url.strip_prefix("https://github.com/") {
         slug.to_string()
     } else if url.contains('/') && !url.contains("://") {
@@ -368,10 +366,7 @@ fn group_by_labels(prs: &[GithubPr]) -> std::collections::HashMap<String, Vec<i3
     let mut groups: std::collections::HashMap<String, Vec<i32>> = std::collections::HashMap::new();
     for pr in prs {
         for label in &pr.labels {
-            groups
-                .entry(label.clone())
-                .or_default()
-                .push(pr.number);
+            groups.entry(label.clone()).or_default().push(pr.number);
         }
     }
     groups

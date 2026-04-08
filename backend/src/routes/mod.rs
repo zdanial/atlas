@@ -99,14 +99,8 @@ pub fn router() -> Router<Pool> {
         .route("/api/brain-dump", post(braindump::brain_dump))
         // Event sourcing (WP-15)
         .route("/api/events", post(events::create_event))
-        .route(
-            "/api/projects/{id}/events",
-            get(events::list_events),
-        )
-        .route(
-            "/api/projects/{id}/state",
-            get(events::get_state_at),
-        )
+        .route("/api/projects/{id}/events", get(events::list_events))
+        .route("/api/projects/{id}/state", get(events::get_state_at))
         .route(
             "/api/projects/{id}/snapshots",
             post(events::create_snapshot),

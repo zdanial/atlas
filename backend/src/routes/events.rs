@@ -178,16 +178,12 @@ pub async fn get_state_at(
         std::collections::HashMap::new();
 
     let replay_from = if let Some(ref snap) = snapshot {
-        if let Ok(nodes) =
-            serde_json::from_value::<Vec<models::Node>>(snap.nodes.clone())
-        {
+        if let Ok(nodes) = serde_json::from_value::<Vec<models::Node>>(snap.nodes.clone()) {
             for n in nodes {
                 node_map.insert(n.id, n);
             }
         }
-        if let Ok(edges) =
-            serde_json::from_value::<Vec<models::NodeEdge>>(snap.edges.clone())
-        {
+        if let Ok(edges) = serde_json::from_value::<Vec<models::NodeEdge>>(snap.edges.clone()) {
             for e in edges {
                 edge_map.insert(e.id, e);
             }
