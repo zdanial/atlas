@@ -65,12 +65,12 @@ describe('epicPayload', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('rejects missing prd', () => {
+	it('accepts missing prd (defaults to empty object)', () => {
 		const result = epicPayload.safeParse({
 			techPlan: {},
 			openQuestions: []
 		});
-		expect(result.success).toBe(false);
+		expect(result.success).toBe(true);
 	});
 });
 

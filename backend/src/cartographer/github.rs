@@ -166,7 +166,7 @@ pub async fn fetch_plans(
     for path in md_paths {
         match fetch_file(client, full_name, pat, &path).await {
             Ok(content) => {
-                let name = path.split('/').last().unwrap_or(&path).to_string();
+                let name = path.split('/').next_back().unwrap_or(&path).to_string();
                 // Truncate to ~15KB per file to stay within token budget
                 let truncated = if content.len() > 15_000 {
                     format!("{}\n\n[... truncated ...]", &content[..15_000])

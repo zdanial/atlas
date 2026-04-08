@@ -1,10 +1,6 @@
-use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    Json,
-};
+use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::json;
 use uuid::Uuid;
 
 use crate::db::{models, pool::Pool};
@@ -53,14 +49,6 @@ struct GithubPr {
     url: String,
     created_at: String,
     labels: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct GithubCommit {
-    sha: String,
-    message: String,
-    author: String,
-    date: String,
 }
 
 // ---------------------------------------------------------------------------
@@ -153,7 +141,7 @@ pub async fn scan_repo(
     // For now, create stub data that demonstrates the scanning pipeline.
     let stub_prs = generate_stub_prs(&repo_slug);
     let mut nodes_created = 0;
-    let mut edges_created = 0;
+    let edges_created = 0;
     let mut events_backfilled = 0;
 
     // Process PRs → create ticket nodes
@@ -293,8 +281,6 @@ fn parse_repo_slug(url: &str) -> String {
     let url = url.trim_end_matches('/').trim_end_matches(".git");
     if let Some(slug) = url.strip_prefix("https://github.com/") {
         slug.to_string()
-    } else if url.contains('/') && !url.contains("://") {
-        url.to_string()
     } else {
         url.to_string()
     }
