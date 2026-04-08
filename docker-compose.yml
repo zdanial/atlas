@@ -27,6 +27,8 @@ services:
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/atlas
       RUST_LOG: info
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     ports:
       - "6100:3001"
 

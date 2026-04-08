@@ -5,9 +5,10 @@
 	interface Props {
 		nodes: Node[];
 		onUpdateNode?: (id: string, patch: Partial<Node>) => void;
+		onOpenNode?: (id: string) => void;
 	}
 
-	let { nodes, onUpdateNode }: Props = $props();
+	let { nodes, onUpdateNode, onOpenNode }: Props = $props();
 
 	let collapsedColumns = $state<Set<string>>(new Set());
 	let draggedNodeId = $state<string | null>(null);
@@ -104,12 +105,14 @@
 							</div>
 						{:else}
 							{#each columnItems as node (node.id)}
+								<!-- svelte-ignore a11y_click_events_have_key_events -->
 								<div
 									class="kanban-card"
 									class:is-dragged={draggedNodeId === node.id}
 									draggable="true"
 									ondragstart={(e) => handleDragStart(e, node.id)}
 									ondragend={handleDragEnd}
+									onclick={() => onOpenNode?.(node.id)}
 									role="listitem"
 									style:border-left-color={config.badge}
 								>
@@ -117,6 +120,7 @@
 									{#if extractBodyText(node.body)}
 										<div class="card-body">{extractBodyText(node.body)}</div>
 									{/if}
+									<div class="card-status">{node.status}</div>
 								</div>
 							{/each}
 						{/if}
@@ -273,5 +277,13 @@
 		-webkit-line-clamp: 2;
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
+	}
+
+	.card-status {
+		font-size: 9px;
+		color: #525252;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		margin-top: 6px;
 	}
 </style>

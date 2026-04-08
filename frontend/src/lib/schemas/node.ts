@@ -58,12 +58,14 @@ export const intentPayload = z.object({
 });
 export type IntentPayload = z.infer<typeof intentPayload>;
 
-export const epicPayload = z.object({
-	prd: z.record(z.string(), z.unknown()), // RichText JSON
-	techPlan: z.record(z.string(), z.unknown()),
-	openQuestions: z.array(z.string()),
-	wireframes: z.array(z.string()).optional()
-});
+export const epicPayload = z
+	.object({
+		prd: z.record(z.string(), z.unknown()).optional().default({}),
+		techPlan: z.record(z.string(), z.unknown()).optional().default({}),
+		openQuestions: z.array(z.string()).optional().default([]),
+		wireframes: z.array(z.string()).optional()
+	})
+	.passthrough();
 export type EpicPayload = z.infer<typeof epicPayload>;
 
 const fileChange = z.object({

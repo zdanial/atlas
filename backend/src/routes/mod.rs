@@ -1,8 +1,11 @@
 pub mod braindump;
+pub mod events;
+pub mod github;
 pub mod imports;
 pub mod nodes;
 pub mod projects;
 pub mod providers;
+pub mod strategist;
 #[cfg(test)]
 mod tests;
 
@@ -94,6 +97,31 @@ pub fn router() -> Router<Pool> {
         )
         // Brain dump
         .route("/api/brain-dump", post(braindump::brain_dump))
+        // Event sourcing (WP-15)
+        .route("/api/events", post(events::create_event))
+        .route(
+            "/api/projects/{id}/events",
+            get(events::list_events),
+        )
+        .route(
+            "/api/projects/{id}/state",
+            get(events::get_state_at),
+        )
+        .route(
+            "/api/projects/{id}/snapshots",
+            post(events::create_snapshot),
+        )
+        // GitHub Scanner (WP-19)
+        .route("/api/github/scan", post(github::scan_repo))
+        // Strategist Agent (WP-18)
+        .route(
+            "/api/projects/{id}/strategist/analyze",
+            get(strategist::analyze_intents),
+        )
+        .route(
+            "/api/projects/{project_id}/strategist/what-if/{intent_id}",
+            get(strategist::what_if_drop),
+        )
 }
 
 /// Router without any state requirement, for integration tests that skip the DB.
