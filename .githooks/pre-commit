@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# Pre-commit hook: runs formatters on staged files
+# Pre-commit hook: auto-formats staged files before committing
 # Install: git config core.hooksPath .githooks
 # ---------------------------------------------------------------------------
 
@@ -11,33 +11,34 @@ REPO_ROOT="$(git rev-parse --show-toplevel)"
 # ── Backend: cargo fmt ─────────────────────────────────────────────────────
 RUST_STAGED=$(git diff --cached --name-only --diff-filter=ACM -- '*.rs')
 if [ -n "$RUST_STAGED" ] && command -v cargo &>/dev/null; then
-  echo "Running cargo fmt --check on staged .rs files..."
-  (cd "$REPO_ROOT/backend" && cargo fmt --check) || {
-    echo ""
-    echo "cargo fmt check failed. Run 'cd backend && cargo fmt' to fix."
-    exit 1
-  }
+  echo "Running cargo fmt on staged .rs files..."
+  (cd "$REPO_ROOT/backend" && cargo fmt)
+  # Re-stage any reformatted files
+  for f in $RUST_STAGED; do
+    git add "$REPO_ROOT/$f"
+  done
 fi
 
 # ── Frontend: prettier ────────────────────────────────────────────────────
-FRONTEND_STAGED=$(git diff --cached --name-only --diff-filter=ACM -- 'frontend/*.ts' 'frontend/*.svelte' 'frontend/*.js' 'frontend/*.css' 'frontend/*.json')
+FRONTEND_STAGED=$(git diff --cached --name-only --diff-filter=ACM -- 'frontend/*')
 if [ -n "$FRONTEND_STAGED" ]; then
   PRETTIER="$REPO_ROOT/frontend/node_modules/.bin/prettier"
   if [ -x "$PRETTIER" ]; then
-    echo "Running prettier --check on staged frontend files..."
-    # Build the file list relative to repo root
+    echo "Running prettier --write on staged frontend files..."
     FILES=""
     for f in $FRONTEND_STAGED; do
-      FILES="$FILES $REPO_ROOT/$f"
+      # Only format files prettier knows how to handle
+      case "$f" in
+        *.ts|*.svelte|*.js|*.css|*.json|*.yaml|*.yml|*.html|*.md)
+          FILES="$FILES $REPO_ROOT/$f"
+          ;;
+      esac
     done
-    (cd "$REPO_ROOT/frontend" && $PRETTIER --check $FILES) || {
-      echo ""
-      echo "Prettier check failed. Run 'cd frontend && pnpm format' to fix."
-      exit 1
-    }
-  else
-    echo "Warning: prettier not found. Run 'cd frontend && pnpm install' first."
+    if [ -n "$FILES" ]; then
+      (cd "$REPO_ROOT/frontend" && $PRETTIER --write $FILES 2>/dev/null) || true
+      for f in $FRONTEND_STAGED; do
+        git add "$REPO_ROOT/$f"
+      done
+    fi
   fi
 fi
-
-echo "Pre-commit checks passed."

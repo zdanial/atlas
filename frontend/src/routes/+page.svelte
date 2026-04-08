@@ -13,6 +13,8 @@
 	import ConnectorStatus from '$lib/components/ConnectorStatus.svelte';
 	import SettingsDialog from '$lib/components/SettingsDialog.svelte';
 	import LogPanel from '$lib/components/LogPanel.svelte';
+	import ConnectRepoDialog from '$lib/components/ConnectRepoDialog.svelte';
+	import AnalysisReviewDialog from '$lib/components/AnalysisReviewDialog.svelte';
 	import { createStorage } from '$lib/storage';
 	import type { Node, NodeEdge, StorageAdapter } from '$lib/storage/adapter';
 	import {
@@ -41,6 +43,7 @@
 		getNode
 	} from '$lib/stores/nodes.svelte';
 	import { pushOperation, undo, redo, canUndo, canRedo } from '$lib/stores/history.svelte';
+	import { loadNodes } from '$lib/stores/nodes.svelte';
 	import type { UpdateNodeInput } from '$lib/schemas/node';
 
 	type ViewMode = 'canvas' | 'kanban' | 'graph' | 'roadmap';
@@ -56,6 +59,11 @@
 	let selectedNodeIds = $state<Set<string>>(new Set());
 	let showSettings = $state(false);
 	let showLog = $state(false);
+	let showConnectRepo = $state(false);
+	let showAnalysis = $state(false);
+	let connectedRepo = $state<{ id: string; full_name: string } | null>(null);
+	let pendingAgentRunId = $state<string | null>(null);
+	let workspaceId = $state<string>('');
 	let showContext = $state(false);
 	let contextDraft = $state('');
 	let synthesizing = $state(false);
@@ -336,6 +344,19 @@
 		selectedNodeIds = ids;
 	}
 
+	async function handleAnalyze() {
+		if (!connectedRepo) return;
+		try {
+			const res = await fetch(`/api/repos/${connectedRepo.id}/analyze`, { method: 'POST' });
+			if (!res.ok) throw new Error('Analyze request failed');
+			const data = await res.json();
+			pendingAgentRunId = data.agent_run_id;
+			showAnalysis = true;
+		} catch (e) {
+			console.error('Analyze failed:', e);
+		}
+	}
+
 	// Command palette actions
 	function handlePaletteAction(action: string, payload?: unknown) {
 		showCommandPalette = false;
@@ -492,6 +513,25 @@
 		>
 			⚙
 		</button>
+
+		<span class="text-neutral-700">|</span>
+
+		{#if connectedRepo}
+			<span class="text-xs text-neutral-500">{connectedRepo.full_name}</span>
+			<button
+				class="rounded px-2 py-0.5 text-xs text-emerald-500 transition-colors hover:text-emerald-300"
+				onclick={handleAnalyze}
+			>
+				Analyze
+			</button>
+		{:else}
+			<button
+				class="rounded px-2 py-0.5 text-xs text-neutral-500 transition-colors hover:text-neutral-300"
+				onclick={() => (showConnectRepo = true)}
+			>
+				Connect Repo
+			</button>
+		{/if}
 	</div>
 
 	{#if !ready}
@@ -590,6 +630,34 @@
 
 	{#if showLog}
 		<LogPanel onClose={() => (showLog = false)} />
+	{/if}
+
+	{#if showConnectRepo}
+		<ConnectRepoDialog
+			{projectId}
+			onConnected={(repo) => {
+				connectedRepo = repo;
+				showConnectRepo = false;
+			}}
+			onClose={() => (showConnectRepo = false)}
+		/>
+	{/if}
+
+	{#if showAnalysis && pendingAgentRunId && connectedRepo}
+		<AnalysisReviewDialog
+			agentRunId={pendingAgentRunId}
+			repoId={connectedRepo.id}
+			{projectId}
+			onImported={async () => {
+				showAnalysis = false;
+				pendingAgentRunId = null;
+				await loadNodes({ projectId });
+			}}
+			onClose={() => {
+				showAnalysis = false;
+				pendingAgentRunId = null;
+			}}
+		/>
 	{/if}
 
 	{#if showContext}

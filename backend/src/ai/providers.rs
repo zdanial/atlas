@@ -52,6 +52,12 @@ pub struct AnthropicProvider {
     pub api_key: Option<String>,
 }
 
+impl Default for AnthropicProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AnthropicProvider {
     pub fn new() -> Self {
         let api_key = std::env::var("ANTHROPIC_API_KEY").ok();
@@ -84,6 +90,12 @@ impl ModelProvider for AnthropicProvider {
 
 pub struct OpenAIProvider {
     pub api_key: Option<String>,
+}
+
+impl Default for OpenAIProvider {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl OpenAIProvider {
