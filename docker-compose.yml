@@ -44,6 +44,7 @@ services:
       - frontend_node_modules:/app/node_modules
     environment:
       PUBLIC_API_URL: http://localhost:6100
+      BACKEND_INTERNAL_URL: http://backend:3001
       ORIGIN: http://localhost:6200
     ports:
       - "6200:5173"

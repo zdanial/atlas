@@ -5,6 +5,7 @@ pub mod imports;
 pub mod nodes;
 pub mod projects;
 pub mod providers;
+pub mod repos;
 pub mod strategist;
 #[cfg(test)]
 mod tests;
@@ -107,6 +108,19 @@ pub fn router() -> Router<Pool> {
         )
         // GitHub Scanner (WP-19)
         .route("/api/github/scan", post(github::scan_repo))
+        // Repo CRUD + Cartographer (WP-19)
+        .route(
+            "/api/repos",
+            get(repos::list_repos).post(repos::connect_repo),
+        )
+        .route("/api/repos/{id}", delete(repos::delete_repo))
+        .route("/api/repos/{id}/analyze", post(repos::trigger_analysis))
+        .route(
+            "/api/repos/{id}/analyze/{run_id}/commit",
+            post(repos::commit_findings),
+        )
+        .route("/api/repos/{id}/existing-titles", get(repos::existing_titles))
+        .route("/api/agent-runs/{id}", get(repos::get_agent_run))
         // Strategist Agent (WP-18)
         .route(
             "/api/projects/{id}/strategist/analyze",

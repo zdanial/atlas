@@ -1,4 +1,4 @@
-use atlas_server::{db, routes, ws};
+use atlas_server::{ai::registry::ProviderRegistry, db, routes, ws};
 
 use axum::{routing::get, Router};
 use std::sync::Arc;
@@ -27,8 +27,12 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Seeding defaults...");
     db::seed::seed_defaults(&pool).await?;
 
+    // Provider registry (auto-detects available AI providers from env)
+    let registry = Arc::new(ProviderRegistry::from_env());
+
     // WebSocket broadcast channel (capacity: 256 buffered events)
     let broadcast = Arc::new(ws::WsBroadcast::new(256));
+    let broadcast_for_ws = broadcast.clone();
 
     let allowed_origins = [
         "http://localhost:5173"
@@ -45,7 +49,9 @@ async fn main() -> anyhow::Result<()> {
 
     let app = Router::new()
         .merge(routes::router())
-        .route("/ws", get(ws::ws_handler).with_state(broadcast))
+        .route("/ws", get(ws::ws_handler).with_state(broadcast_for_ws))
+        .layer(axum::Extension(broadcast))
+        .layer(axum::Extension(registry))
         .layer(cors)
         .with_state(pool);
 

@@ -30,6 +30,14 @@ pub enum WsEvent {
     },
     #[serde(rename = "edge.deleted")]
     EdgeDeleted { edge_id: String },
+    #[serde(rename = "analysis.progress")]
+    AnalysisProgress {
+        repo_id: String,
+        agent_run_id: String,
+        status: String,
+        message: String,
+        findings_count: Option<usize>,
+    },
 }
 
 // ---------------------------------------------------------------------------

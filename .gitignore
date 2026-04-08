@@ -1,1 +1,4 @@
 frontend/.pnpm-store/
+backend/target/
+.env
+frontend/.env
