@@ -161,11 +161,7 @@ async fn run_analysis_inner(
 
     // Call LLM — combine system prompt + user prompt into a single input
     let user_prompt = build_prompt(&plans, &tree);
-    let full_input = format!(
-        "{}\n\n---\n\n{}",
-        analysis_system_prompt(),
-        user_prompt
-    );
+    let full_input = format!("{}\n\n---\n\n{}", analysis_system_prompt(), user_prompt);
     let llm_result = registry
         .call_model(Capability::Synthesis, &full_input)
         .await;

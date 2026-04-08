@@ -204,6 +204,5 @@ async fn github_get(
         req = req.header("Authorization", format!("Bearer {pat}"));
     }
 
-    req.send().await
-        .map_err(GithubError::Request)
+    req.send().await.map_err(GithubError::Request)
 }

@@ -119,7 +119,10 @@ pub fn router() -> Router<Pool> {
             "/api/repos/{id}/analyze/{run_id}/commit",
             post(repos::commit_findings),
         )
-        .route("/api/repos/{id}/existing-titles", get(repos::existing_titles))
+        .route(
+            "/api/repos/{id}/existing-titles",
+            get(repos::existing_titles),
+        )
         .route("/api/agent-runs/{id}", get(repos::get_agent_run))
         // Strategist Agent (WP-18)
         .route(
