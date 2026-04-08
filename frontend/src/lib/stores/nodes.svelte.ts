@@ -91,6 +91,7 @@ export async function initStore(adapter: StorageAdapter, projectId?: string) {
 	if (projectId) {
 		currentProjectId = projectId;
 		await loadNodes({ projectId });
+		await loadAllEdges();
 	}
 }
 
@@ -106,7 +107,21 @@ export async function loadNodes(filter: NodeFilter) {
 /** Set the active project and reload nodes. */
 export async function setProject(projectId: string) {
 	currentProjectId = projectId;
+	edgeMap.clear();
 	await loadNodes({ projectId });
+	await loadAllEdges();
+}
+
+/** Load edges for all current project nodes. */
+async function loadAllEdges() {
+	if (!storage) return;
+	const nodes = Array.from(nodeMap.values());
+	for (const node of nodes) {
+		const edges = await storage.getEdges(node.id);
+		for (const edge of edges) {
+			edgeMap.set(edge.id, edge);
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------

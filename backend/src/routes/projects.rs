@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
-use crate::db::{models, pool::Pool};
 use super::nodes::ErrorResponse;
+use crate::db::{models, pool::Pool};
 
 // ---------------------------------------------------------------------------
 // Request / response DTOs

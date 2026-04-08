@@ -100,19 +100,18 @@ pub async fn list_providers(
     State(pool): State<Pool>,
     Query(query): Query<ListProvidersQuery>,
 ) -> Result<Json<ProvidersResponse>, (StatusCode, Json<ErrorResponse>)> {
-    let provider_configs =
-        sqlx::query_as::<_, models::ProviderConfig>(LIST_PROVIDERS_SQL)
-            .bind(query.workspace_id)
-            .fetch_all(&pool)
-            .await
-            .map_err(|e| {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(ErrorResponse {
-                        error: e.to_string(),
-                    }),
-                )
-            })?;
+    let provider_configs = sqlx::query_as::<_, models::ProviderConfig>(LIST_PROVIDERS_SQL)
+        .bind(query.workspace_id)
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })?;
 
     Ok(Json(ProvidersResponse { provider_configs }))
 }
@@ -156,23 +155,22 @@ pub async fn update_provider(
     Path(id): Path<Uuid>,
     Json(body): Json<UpdateProviderBody>,
 ) -> Result<Json<ProviderResponse>, (StatusCode, Json<ErrorResponse>)> {
-    let provider_config =
-        sqlx::query_as::<_, models::ProviderConfig>(UPDATE_PROVIDER_SQL)
-            .bind(id)
-            .bind(&body.provider)
-            .bind(&body.api_key_encrypted)
-            .bind(&body.model_overrides)
-            .bind(body.is_enabled)
-            .fetch_optional(&pool)
-            .await
-            .map_err(|e| {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(ErrorResponse {
-                        error: e.to_string(),
-                    }),
-                )
-            })?;
+    let provider_config = sqlx::query_as::<_, models::ProviderConfig>(UPDATE_PROVIDER_SQL)
+        .bind(id)
+        .bind(&body.provider)
+        .bind(&body.api_key_encrypted)
+        .bind(&body.model_overrides)
+        .bind(body.is_enabled)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })?;
 
     match provider_config {
         Some(pc) => Ok(Json(ProviderResponse {

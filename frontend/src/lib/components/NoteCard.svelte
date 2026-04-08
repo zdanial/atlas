@@ -6,32 +6,52 @@
 	interface Props {
 		node: Node;
 		isDragging: boolean;
+		isSelected?: boolean;
 		onDragStart: (e: PointerEvent) => void;
+		onClick?: (e: MouseEvent) => void;
 		onUpdateNode?: (id: string, patch: Partial<Node>) => void;
+		onOpen?: (id: string) => void;
+		onDelete?: (id: string) => void;
 	}
 
-	let { node, isDragging, onDragStart, onUpdateNode }: Props = $props();
+	let {
+		node,
+		isDragging,
+		isSelected = false,
+		onDragStart,
+		onClick,
+		onUpdateNode,
+		onOpen,
+		onDelete
+	}: Props = $props();
 
 	let isEditing = $state(false);
 	let isEditingTitle = $state(false);
 	let showTypeSelector = $state(false);
+	let isHovered = $state(false);
 	let titleInputEl = $state<HTMLInputElement>();
 
 	let colors = $derived(getNodeTypeConfig(node.type));
 	let bodyPreview = $derived(extractBodyText(node.body));
+	let tags = $derived<string[]>(
+		Array.isArray(node.payload?.tags) ? (node.payload!.tags as string[]) : []
+	);
 
 	let x = $derived(node.positionX ?? 0);
 	let y = $derived(node.positionY ?? 0);
 
 	function handleDblClick(e: MouseEvent) {
 		e.stopPropagation();
-		isEditing = true;
+		if (onOpen) {
+			onOpen(node.id);
+		} else {
+			isEditing = true;
+		}
 	}
 
 	function handleTitleDblClick(e: MouseEvent) {
 		e.stopPropagation();
 		isEditingTitle = true;
-		// Focus the input after it renders
 		requestAnimationFrame(() => titleInputEl?.select());
 	}
 
@@ -77,6 +97,17 @@
 		if (isEditing || isEditingTitle) return;
 		onDragStart(e);
 	}
+
+	function handleClick(e: MouseEvent) {
+		if (isEditing || isEditingTitle) return;
+		onClick?.(e);
+	}
+
+	function handleDeleteClick(e: MouseEvent) {
+		e.stopPropagation();
+		e.preventDefault();
+		onDelete?.(node.id);
+	}
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -84,6 +115,7 @@
 	class="note-card"
 	class:dragging={isDragging}
 	class:editing={isEditing}
+	class:selected={isSelected}
 	role="button"
 	tabindex="0"
 	style:left="{x}px"
@@ -91,7 +123,10 @@
 	style:background-color={colors.bg}
 	style:border-color={colors.border}
 	onpointerdown={handlePointerDown}
+	onclick={handleClick}
 	ondblclick={handleDblClick}
+	onmouseenter={() => (isHovered = true)}
+	onmouseleave={() => (isHovered = false)}
 >
 	<div class="note-header">
 		<button class="type-badge" style:background-color={colors.badge} onclick={handleBadgeClick}>
@@ -104,12 +139,35 @@
 					<button
 						class="type-option"
 						class:active={node.type === key}
-						style:--badge-color={config.badge}
 						onclick={() => handleTypeSelect(key)}
 					>
 						<span class="type-dot" style:background-color={config.badge}></span>
 						{config.label}
 					</button>
+				{/each}
+			</div>
+		{/if}
+
+		<div class="header-right">
+			{#if tags.length > 0}
+				<!-- Collapsed: always in flow -->
+				{#if !isHovered}
+					<span class="tag-chip">{tags[0]}</span>
+					{#if tags.length > 1}
+						<span class="tag-more">+{tags.length - 1}</span>
+					{/if}
+				{/if}
+			{/if}
+			{#if isHovered && onDelete}
+				<button class="delete-btn" onclick={handleDeleteClick} title="Delete">×</button>
+			{/if}
+		</div>
+
+		<!-- Expanded tags float below the header when hovered -->
+		{#if isHovered && tags.length > 0}
+			<div class="tags-float">
+				{#each tags as tag}
+					<span class="tag-chip">{tag}</span>
 				{/each}
 			</div>
 		{/if}
@@ -171,9 +229,16 @@
 		z-index: 1000;
 	}
 
+	.note-card.selected {
+		box-shadow:
+			0 0 0 2px #6366f1,
+			0 4px 12px rgba(99, 102, 241, 0.3);
+	}
+
 	.note-header {
 		display: flex;
-		align-items: center;
+		align-items: flex-start;
+		gap: 4px;
 		margin-bottom: 6px;
 		position: relative;
 	}
@@ -189,10 +254,72 @@
 		border: none;
 		cursor: pointer;
 		transition: opacity 0.1s;
+		flex-shrink: 0;
 	}
 
 	.type-badge:hover {
 		opacity: 0.85;
+	}
+
+	.header-right {
+		display: flex;
+		align-items: center;
+		gap: 3px;
+		margin-left: auto;
+		flex-shrink: 0;
+	}
+
+	.tag-chip {
+		font-size: 9px;
+		padding: 1px 5px;
+		border-radius: 10px;
+		background: rgba(255, 255, 255, 0.07);
+		color: #737373;
+		white-space: nowrap;
+		max-width: 70px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.tag-more {
+		font-size: 9px;
+		color: #525252;
+		white-space: nowrap;
+	}
+
+	.tags-float {
+		position: absolute;
+		top: 100%;
+		right: 0;
+		margin-top: 4px;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 3px;
+		justify-content: flex-end;
+		max-width: 200px;
+		background: #141414;
+		border: 1px solid #2a2a2a;
+		border-radius: 6px;
+		padding: 5px 7px;
+		z-index: 1500;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+		pointer-events: none;
+	}
+
+	.delete-btn {
+		background: none;
+		border: none;
+		color: #525252;
+		font-size: 14px;
+		line-height: 1;
+		padding: 0 2px;
+		cursor: pointer;
+		flex-shrink: 0;
+		transition: color 0.1s;
+	}
+
+	.delete-btn:hover {
+		color: #ef4444;
 	}
 
 	.type-selector {
