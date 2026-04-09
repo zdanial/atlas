@@ -29,6 +29,24 @@ class AtlasDatabase extends Dexie {
 			agentRuns: 'id, agent, createdAt',
 			changes: 'id, entityType, entityId, timestamp'
 		});
+		this.version(2)
+			.stores({
+				nodes: 'id, type, layer, projectId, parentId, status, sortOrder',
+				nodeEdges: 'id, sourceId, targetId, relationType',
+				nodeVersions: 'id, nodeId, version',
+				agentRuns: 'id, agent, createdAt',
+				changes: 'id, entityType, entityId, timestamp'
+			})
+			.upgrade((tx) => {
+				return tx
+					.table('nodes')
+					.toCollection()
+					.modify((node) => {
+						if (node.sortOrder === undefined) {
+							node.sortOrder = node.createdAt?.getTime?.() ?? Date.now();
+						}
+					});
+			});
 	}
 }
 
@@ -79,6 +97,7 @@ export class IndexedDBAdapter implements StorageAdapter {
 			status: input.status ?? 'active',
 			positionX: input.positionX ?? null,
 			positionY: input.positionY ?? null,
+			sortOrder: input.sortOrder ?? Date.now(),
 			createdBy: null,
 			createdAt: now,
 			updatedAt: now

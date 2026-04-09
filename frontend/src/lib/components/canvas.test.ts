@@ -17,6 +17,7 @@ function makeNode(overrides: Partial<Node> = {}): Node {
 		status: 'draft',
 		positionX: 100,
 		positionY: 200,
+		sortOrder: null,
 		createdBy: null,
 		createdAt: new Date(),
 		updatedAt: new Date(),

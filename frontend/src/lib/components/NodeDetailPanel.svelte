@@ -1,21 +1,64 @@
 <script lang="ts">
 	import type { Node } from '$lib/storage/adapter';
 	import { getNodeTypeConfig, extractBodyText, NODE_TYPES } from '$lib/node-types';
+	import { getProjectNodes } from '$lib/stores/nodes.svelte';
 	import NoteEditor from './NoteEditor.svelte';
 
 	interface Props {
 		node: Node;
 		onUpdateNode?: (id: string, patch: Partial<Node>) => void;
+		onCreateEdge?: (sourceId: string, targetId: string) => void;
 		onClose: () => void;
+		onOpenChat?: () => void;
 	}
 
-	let { node, onUpdateNode, onClose }: Props = $props();
+	let { node, onUpdateNode, onCreateEdge, onClose, onOpenChat }: Props = $props();
 
 	let isEditingTitle = $state(false);
 	let isEditingBody = $state(false);
 	let showTypeSelector = $state(false);
 	let titleInputEl = $state<HTMLInputElement>();
 	let newTagInput = $state('');
+	let showTagSuggestions = $state(false);
+	let showLinkSearch = $state(false);
+	let linkSearchQuery = $state('');
+
+	// Derive all unique tags across the project for autocomplete
+	let allProjectTags = $derived.by(() => {
+		const tagSet = new Set<string>();
+		for (const n of getProjectNodes()) {
+			const t = n.payload?.tags;
+			if (Array.isArray(t)) {
+				for (const tag of t) tagSet.add(tag as string);
+			}
+		}
+		return Array.from(tagSet).sort();
+	});
+
+	// Stable color from tag name
+	function tagColor(tag: string): string {
+		let hash = 0;
+		for (let i = 0; i < tag.length; i++) hash = (hash * 31 + tag.charCodeAt(i)) | 0;
+		const colors = [
+			'#6366f1',
+			'#22c55e',
+			'#f97316',
+			'#06b6d4',
+			'#ec4899',
+			'#eab308',
+			'#8b5cf6',
+			'#14b8a6',
+			'#ef4444',
+			'#3b82f6'
+		];
+		return colors[Math.abs(hash) % colors.length];
+	}
+
+	let tagSuggestions = $derived.by(() => {
+		const q = newTagInput.trim().toLowerCase();
+		if (!q) return allProjectTags.filter((t) => !tags.includes(t));
+		return allProjectTags.filter((t) => t.includes(q) && !tags.includes(t));
+	});
 
 	let colors = $derived(getNodeTypeConfig(node.type));
 	let bodyText = $derived(extractBodyText(node.body, 5000));
@@ -38,12 +81,21 @@
 		newTagInput = '';
 	}
 
+	function handleSelectTag(tag: string) {
+		if (!tags.includes(tag)) {
+			onUpdateNode?.(node.id, { payload: { ...(node.payload ?? {}), tags: [...tags, tag] } });
+		}
+		newTagInput = '';
+		showTagSuggestions = false;
+	}
+
 	function handleTagKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter') {
 			e.preventDefault();
 			handleAddTag();
 		} else if (e.key === 'Escape') {
 			newTagInput = '';
+			showTagSuggestions = false;
 		}
 	}
 
@@ -80,6 +132,21 @@
 
 	function handleStatusChange(status: string) {
 		onUpdateNode?.(node.id, { status });
+	}
+
+	// Linkable planning nodes (L1-L4, excluding self)
+	let linkableNodes = $derived.by(() => {
+		const q = linkSearchQuery.trim().toLowerCase();
+		return getProjectNodes()
+			.filter((n) => n.id !== node.id && n.layer >= 1 && n.layer <= 4)
+			.filter((n) => !q || n.title.toLowerCase().includes(q))
+			.slice(0, 10);
+	});
+
+	function handleLink(targetId: string) {
+		onCreateEdge?.(node.id, targetId);
+		showLinkSearch = false;
+		linkSearchQuery = '';
 	}
 
 	function handleKeyDown(e: KeyboardEvent) {
@@ -133,6 +200,9 @@
 				{/each}
 			</div>
 
+			{#if onOpenChat}
+				<button class="chat-btn" onclick={onOpenChat} title="Chat about this note">💬</button>
+			{/if}
 			<button class="close-btn" onclick={onClose}>×</button>
 		</div>
 
@@ -177,19 +247,78 @@
 			<div class="tags-list">
 				{#each tags as tag}
 					<span class="tag-chip">
+						<span class="tag-dot" style:background={tagColor(tag)}></span>
 						{tag}
 						<button class="tag-remove" onclick={() => handleRemoveTag(tag)}>×</button>
 					</span>
 				{/each}
-				<input
-					class="tag-input"
-					placeholder="+ add tag"
-					bind:value={newTagInput}
-					onkeydown={handleTagKeydown}
-					onblur={handleAddTag}
-				/>
+				<div class="tag-input-wrap">
+					<input
+						class="tag-input"
+						placeholder="+ add tag"
+						bind:value={newTagInput}
+						onkeydown={handleTagKeydown}
+						onfocus={() => (showTagSuggestions = true)}
+						onblur={() => {
+							setTimeout(() => (showTagSuggestions = false), 150);
+							handleAddTag();
+						}}
+					/>
+					{#if showTagSuggestions && tagSuggestions.length > 0}
+						<div class="tag-suggestions">
+							{#each tagSuggestions.slice(0, 8) as suggestion}
+								<button
+									class="tag-suggestion"
+									onmousedown={(e) => {
+										e.preventDefault();
+										handleSelectTag(suggestion);
+									}}
+								>
+									<span class="tag-dot" style:background={tagColor(suggestion)}></span>
+									{suggestion}
+								</button>
+							{/each}
+						</div>
+					{/if}
+				</div>
 			</div>
 		</div>
+
+		<!-- Link to -->
+		{#if onCreateEdge}
+			<div class="link-section">
+				{#if showLinkSearch}
+					<div class="link-search-wrap">
+						<input
+							class="link-search-input"
+							placeholder="Search planning nodes..."
+							bind:value={linkSearchQuery}
+							onkeydown={(e) => {
+								if (e.key === 'Escape') {
+									showLinkSearch = false;
+									linkSearchQuery = '';
+								}
+							}}
+						/>
+						<div class="link-results">
+							{#each linkableNodes as target}
+								{@const tc = getNodeTypeConfig(target.type)}
+								<button class="link-result" onclick={() => handleLink(target.id)}>
+									<span class="link-result-dot" style:background={tc.badge}></span>
+									<span class="link-result-type">{tc.label}</span>
+									<span class="link-result-title">{target.title}</span>
+								</button>
+							{/each}
+							{#if linkableNodes.length === 0}
+								<div class="link-empty">No matching nodes</div>
+							{/if}
+						</div>
+					</div>
+				{:else}
+					<button class="link-btn" onclick={() => (showLinkSearch = true)}> Link to... </button>
+				{/if}
+			</div>
+		{/if}
 
 		<!-- Meta -->
 		<div class="meta">
@@ -326,6 +455,21 @@
 		color: #a3a3a3;
 	}
 
+	.chat-btn {
+		background: none;
+		border: 1px solid #2a2a4a;
+		color: #818cf8;
+		font-size: 13px;
+		cursor: pointer;
+		padding: 2px 8px;
+		border-radius: 4px;
+		line-height: 1;
+	}
+
+	.chat-btn:hover {
+		background: #1f1f3a;
+	}
+
 	.close-btn {
 		background: none;
 		border: none;
@@ -412,6 +556,13 @@
 		color: #a3a3a3;
 	}
 
+	.tag-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		flex-shrink: 0;
+	}
+
 	.tag-remove {
 		background: none;
 		border: none;
@@ -424,6 +575,10 @@
 
 	.tag-remove:hover {
 		color: #ef4444;
+	}
+
+	.tag-input-wrap {
+		position: relative;
 	}
 
 	.tag-input {
@@ -444,6 +599,130 @@
 	.tag-input:focus {
 		border-color: #525252;
 		color: #a3a3a3;
+	}
+
+	.tag-suggestions {
+		position: absolute;
+		top: 100%;
+		left: 0;
+		margin-top: 4px;
+		background: #1a1a1a;
+		border: 1px solid #333;
+		border-radius: 6px;
+		padding: 4px;
+		min-width: 140px;
+		max-height: 200px;
+		overflow-y: auto;
+		z-index: 100;
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+	}
+
+	.tag-suggestion {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		width: 100%;
+		padding: 4px 8px;
+		border: none;
+		border-radius: 4px;
+		background: transparent;
+		color: #a3a3a3;
+		font-size: 11px;
+		cursor: pointer;
+		text-align: left;
+	}
+
+	.tag-suggestion:hover {
+		background: #262626;
+		color: #e5e5e5;
+	}
+
+	.link-section {
+		margin-bottom: 16px;
+	}
+
+	.link-btn {
+		background: none;
+		border: 1px dashed #333;
+		color: #525252;
+		font-size: 11px;
+		padding: 4px 10px;
+		border-radius: 6px;
+		cursor: pointer;
+	}
+
+	.link-btn:hover {
+		color: #a3a3a3;
+		border-color: #525252;
+	}
+
+	.link-search-wrap {
+		border: 1px solid #333;
+		border-radius: 6px;
+		overflow: hidden;
+	}
+
+	.link-search-input {
+		width: 100%;
+		background: #1a1a1a;
+		border: none;
+		border-bottom: 1px solid #262626;
+		color: #e5e5e5;
+		font-size: 12px;
+		padding: 8px 10px;
+		outline: none;
+	}
+
+	.link-results {
+		max-height: 200px;
+		overflow-y: auto;
+	}
+
+	.link-result {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		width: 100%;
+		padding: 6px 10px;
+		border: none;
+		background: transparent;
+		color: #a3a3a3;
+		font-size: 11px;
+		cursor: pointer;
+		text-align: left;
+	}
+
+	.link-result:hover {
+		background: #262626;
+		color: #e5e5e5;
+	}
+
+	.link-result-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		flex-shrink: 0;
+	}
+
+	.link-result-type {
+		font-size: 9px;
+		text-transform: uppercase;
+		color: #525252;
+		flex-shrink: 0;
+	}
+
+	.link-result-title {
+		flex: 1;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.link-empty {
+		padding: 8px 10px;
+		font-size: 11px;
+		color: #404040;
+		text-align: center;
 	}
 
 	.meta {

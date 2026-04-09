@@ -10,6 +10,7 @@ export interface Node {
 	status: string;
 	positionX: number | null;
 	positionY: number | null;
+	sortOrder: number | null;
 	createdBy: string | null;
 	createdAt: Date;
 	updatedAt: Date;
@@ -26,6 +27,7 @@ export interface CreateNode {
 	status?: string;
 	positionX?: number | null;
 	positionY?: number | null;
+	sortOrder?: number | null;
 }
 
 export interface NodeEdge {

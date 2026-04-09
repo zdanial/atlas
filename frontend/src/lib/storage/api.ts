@@ -29,6 +29,7 @@ function toNode(raw: Record<string, unknown>): Node {
 		status: (raw.status as string) ?? 'active',
 		positionX: (raw.position_x as number) ?? null,
 		positionY: (raw.position_y as number) ?? null,
+		sortOrder: (raw.sort_order as number) ?? null,
 		createdBy: (raw.created_by as string) ?? null,
 		createdAt: new Date(raw.created_at as string),
 		updatedAt: new Date(raw.updated_at as string)

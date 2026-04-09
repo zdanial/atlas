@@ -45,8 +45,8 @@
 			<span class="status-indicator queued"></span>
 			<span class="status-text">{queueLen} pending</span>
 		{:else}
-			<span class="status-indicator idle"></span>
-			<span class="status-text">Connector</span>
+			<span class="status-indicator ready"></span>
+			<span class="status-text">Ready</span>
 		{/if}
 
 		{#if suggestions.length > 0}
@@ -110,8 +110,8 @@
 		flex-shrink: 0;
 	}
 
-	.status-indicator.idle {
-		background: #525252;
+	.status-indicator.ready {
+		background: #22c55e;
 	}
 
 	.status-indicator.queued {

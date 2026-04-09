@@ -17,6 +17,8 @@ export const NODE_TYPES = [
 	'reference',
 	'bet',
 	'note',
+	'feature',
+	'initiative',
 	'intent',
 	'epic',
 	'phase',
@@ -37,7 +39,9 @@ export const RELATION_TYPES = [
 	'blocks',
 	'implements',
 	'duplicates',
-	'refines'
+	'refines',
+	'belongs-to',
+	'compacts'
 ] as const;
 export type RelationType = (typeof RELATION_TYPES)[number];
 
@@ -45,18 +49,40 @@ export type RelationType = (typeof RELATION_TYPES)[number];
 // Payload schemas per node type
 // ---------------------------------------------------------------------------
 
-export const canvasNotePayload = z.object({
-	tags: z.array(z.string()),
-	color: z.string().optional()
-});
+export const canvasNotePayload = z
+	.object({
+		tags: z.array(z.string()),
+		color: z.string().optional()
+	})
+	.passthrough();
 export type CanvasNotePayload = z.infer<typeof canvasNotePayload>;
 
-export const intentPayload = z.object({
-	targetOutcome: z.string(),
-	deadline: z.string().optional(), // ISO date string
-	timeHorizon: z.string().optional()
-});
+export const intentPayload = z
+	.object({
+		targetOutcome: z.string(),
+		deadline: z.string().optional(), // ISO date string
+		timeHorizon: z.string().optional()
+	})
+	.passthrough();
 export type IntentPayload = z.infer<typeof intentPayload>;
+
+export const featurePayload = z
+	.object({
+		targetOutcome: z.string(),
+		deadline: z.string().optional(),
+		scope: z.string().optional()
+	})
+	.passthrough();
+export type FeaturePayload = z.infer<typeof featurePayload>;
+
+export const initiativePayload = z
+	.object({
+		targetOutcome: z.string(),
+		deadline: z.string().optional(),
+		timeHorizon: z.string().optional()
+	})
+	.passthrough();
+export type InitiativePayload = z.infer<typeof initiativePayload>;
 
 export const epicPayload = z
 	.object({
@@ -73,14 +99,16 @@ const fileChange = z.object({
 	action: z.string()
 });
 
-export const phasePayload = z.object({
-	objective: z.string(),
-	fileChanges: z.array(fileChange),
-	archNotes: z.string(),
-	verifyCriteria: z.array(z.string()),
-	complexity: z.enum(['low', 'med', 'high']),
-	contextBundle: z.array(z.string()) // UUIDs
-});
+export const phasePayload = z
+	.object({
+		objective: z.string(),
+		fileChanges: z.array(fileChange),
+		archNotes: z.string(),
+		verifyCriteria: z.array(z.string()),
+		complexity: z.enum(['low', 'med', 'high']),
+		contextBundle: z.array(z.string()) // UUIDs
+	})
+	.passthrough();
 export type PhasePayload = z.infer<typeof phasePayload>;
 
 const repoFilePath = z.object({
@@ -88,19 +116,23 @@ const repoFilePath = z.object({
 	path: z.string()
 });
 
-export const ticketPayload = z.object({
-	intent: z.string(),
-	filePaths: z.array(repoFilePath),
-	acceptanceCriteria: z.array(z.string()),
-	promptPayload: z.string(),
-	recommendedAgent: z.string().optional(),
-	repoId: z.string().optional()
-});
+export const ticketPayload = z
+	.object({
+		intent: z.string(),
+		filePaths: z.array(repoFilePath),
+		acceptanceCriteria: z.array(z.string()),
+		promptPayload: z.string(),
+		recommendedAgent: z.string().optional(),
+		repoId: z.string().optional()
+	})
+	.passthrough();
 export type TicketPayload = z.infer<typeof ticketPayload>;
 
 /** Map from node type to its payload schema (only types with structured payloads). */
 export const payloadSchemas: Partial<Record<NodeType, z.ZodType>> = {
 	note: canvasNotePayload,
+	feature: featurePayload,
+	initiative: initiativePayload,
 	intent: intentPayload,
 	epic: epicPayload,
 	phase: phasePayload,
@@ -121,7 +153,8 @@ export const createNodeSchema = z.object({
 	payload: z.record(z.string(), z.unknown()).nullable().optional(),
 	status: z.enum(NODE_STATUSES).optional(),
 	positionX: z.number().nullable().optional(),
-	positionY: z.number().nullable().optional()
+	positionY: z.number().nullable().optional(),
+	sortOrder: z.number().nullable().optional()
 });
 export type CreateNodeInput = z.infer<typeof createNodeSchema>;
 
@@ -133,7 +166,8 @@ export const updateNodeSchema = z.object({
 	status: z.enum(NODE_STATUSES).optional(),
 	positionX: z.number().nullable().optional(),
 	positionY: z.number().nullable().optional(),
-	parentId: z.string().uuid().nullable().optional()
+	parentId: z.string().uuid().nullable().optional(),
+	sortOrder: z.number().nullable().optional()
 });
 export type UpdateNodeInput = z.infer<typeof updateNodeSchema>;
 
