@@ -8,6 +8,7 @@
 	import ConnectorStatus from '$lib/components/ConnectorStatus.svelte';
 	import NodeChatModal from '$lib/components/NodeChatModal.svelte';
 	import type { Node, NodeEdge } from '$lib/storage/adapter';
+	import { tagColor } from '$lib/utils/chat-helpers';
 	import {
 		getProjectNodes,
 		getAllEdges,
@@ -66,24 +67,6 @@
 		}
 		return Array.from(tagSet).sort();
 	});
-
-	function tagColor(tag: string): string {
-		let hash = 0;
-		for (let i = 0; i < tag.length; i++) hash = (hash * 31 + tag.charCodeAt(i)) | 0;
-		const colors = [
-			'#6366f1',
-			'#22c55e',
-			'#f97316',
-			'#06b6d4',
-			'#ec4899',
-			'#eab308',
-			'#8b5cf6',
-			'#14b8a6',
-			'#ef4444',
-			'#3b82f6'
-		];
-		return colors[Math.abs(hash) % colors.length];
-	}
 
 	function toggleTag(tag: string) {
 		const next = new Set(selectedTags);

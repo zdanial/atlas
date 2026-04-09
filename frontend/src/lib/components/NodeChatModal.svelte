@@ -8,10 +8,9 @@
 	import { getGlobalContext } from '$lib/stores/globalContext.svelte';
 	import { getProjectNodes } from '$lib/stores/nodes.svelte';
 	import { extractBodyText, getNodeTypeConfig, NODE_TYPES } from '$lib/node-types';
-	import type { Proposal } from '$lib/proposals';
-	import { marked } from 'marked';
-	import DOMPurify from 'dompurify';
-	import ProposalReview from './ProposalReview.svelte';
+	import { savePayload, tagColor, type ChatHistoryEntry } from '$lib/utils/chat-helpers';
+	import ChatMessages from './ChatMessages.svelte';
+	import ChatInput from './ChatInput.svelte';
 	import type { Node } from '$lib/storage/adapter';
 
 	interface Props {
@@ -25,45 +24,11 @@
 	let { node, projectId, layout = 'chat-first', onUpdateNode, onClose }: Props = $props();
 
 	// Chat state
-	type ChatHistoryEntry = { role: 'user' | 'assistant'; content: string; proposals?: Proposal[] };
 	let chatHistory = $derived<ChatHistoryEntry[]>(
 		(node.payload?.chatHistory as ChatHistoryEntry[]) ?? []
 	);
 	let userInput = $state('');
 	let sending = $state(false);
-	let chatContainer: HTMLDivElement | undefined = $state();
-
-	// Collapsible state
-	let manualCollapse = $state<Map<number, boolean>>(new Map());
-
-	function toggleCollapse(idx: number) {
-		const next = new Map(manualCollapse);
-		const current = next.get(idx);
-		next.set(idx, current === undefined ? true : !current);
-		manualCollapse = next;
-	}
-
-	function isCollapsed(idx: number, total: number): boolean {
-		const manual = manualCollapse.get(idx);
-		if (manual !== undefined) return manual;
-		return idx < total - 2;
-	}
-
-	function renderMarkdown(text: string): string {
-		const raw = marked.parse(text, { async: false }) as string;
-		return DOMPurify.sanitize(raw);
-	}
-
-	function firstLine(text: string): string {
-		const line = text.split('\n').find((l) => l.trim()) ?? text;
-		return line.length > 120 ? line.slice(0, 120) + '...' : line;
-	}
-
-	// Deep-clone payload to strip Svelte 5 proxies before writing to IndexedDB
-	function savePayload(patch: Record<string, unknown>) {
-		const clean = JSON.parse(JSON.stringify({ ...node.payload, ...patch }));
-		onUpdateNode(node.id, { payload: clean });
-	}
 
 	// Card preview state
 	let isEditingTitle = $state(false);
@@ -94,24 +59,6 @@
 		return allProjectTags.filter((t) => t.includes(q) && !tags.includes(t));
 	});
 
-	function tagColor(tag: string): string {
-		let hash = 0;
-		for (let i = 0; i < tag.length; i++) hash = (hash * 31 + tag.charCodeAt(i)) | 0;
-		const palette = [
-			'#6366f1',
-			'#22c55e',
-			'#f97316',
-			'#06b6d4',
-			'#ec4899',
-			'#eab308',
-			'#8b5cf6',
-			'#14b8a6',
-			'#ef4444',
-			'#3b82f6'
-		];
-		return palette[Math.abs(hash) % palette.length];
-	}
-
 	// --- Structured response handling ---
 
 	function applyChatResponse(resp: ChatResponse) {
@@ -124,9 +71,20 @@
 				content: [{ type: 'paragraph', content: [{ type: 'text', text: resp.cardBody }] }]
 			};
 		}
+
+		// Merge payload: tags from meta + type-specific fields from cardPayload
+		const payloadMerge: Record<string, unknown> = { ...(node.payload ?? {}) };
 		if (resp.cardMeta?.tags && resp.cardMeta.tags.length > 0) {
-			patch.payload = { ...(node.payload ?? {}), tags: resp.cardMeta.tags };
+			payloadMerge.tags = resp.cardMeta.tags;
 		}
+		if (resp.cardPayload) {
+			const { chatHistory: _ch, ...rest } = resp.cardPayload;
+			Object.assign(payloadMerge, rest);
+		}
+		if (resp.cardMeta?.tags || resp.cardPayload) {
+			patch.payload = payloadMerge;
+		}
+
 		if (Object.keys(patch).length > 0) {
 			onUpdateNode(node.id, patch);
 		}
@@ -264,7 +222,7 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 		userInput = '';
 
 		const newHistory = [...chatHistory, { role: 'user' as const, content: text }];
-		savePayload({ chatHistory: newHistory });
+		savePayload(node, { chatHistory: newHistory }, onUpdateNode);
 
 		try {
 			const messages: ChatMessage[] = newHistory.map((m) => ({ role: m.role, content: m.content }));
@@ -279,7 +237,7 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 					...(resp.proposals && resp.proposals.length > 0 ? { proposals: resp.proposals } : {})
 				};
 				const withReply = [...newHistory, entry];
-				savePayload({ chatHistory: withReply });
+				savePayload(node, { chatHistory: withReply }, onUpdateNode);
 				applyChatResponse(resp);
 			}
 		} catch (e) {
@@ -292,19 +250,9 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 						'Sorry, I encountered an error. Make sure you have an API key configured in Settings.'
 				}
 			];
-			savePayload({ chatHistory: withError });
+			savePayload(node, { chatHistory: withError }, onUpdateNode);
 		} finally {
 			sending = false;
-			requestAnimationFrame(() => {
-				if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
-			});
-		}
-	}
-
-	function handleChatKeyDown(e: KeyboardEvent) {
-		if (e.key === 'Enter' && !e.shiftKey) {
-			e.preventDefault();
-			handleSend();
 		}
 	}
 
@@ -317,7 +265,7 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 
 		sending = true;
 		const newHistory = [...chatHistory, { role: 'user' as const, content: integrationMsg }];
-		savePayload({ chatHistory: newHistory });
+		savePayload(node, { chatHistory: newHistory }, onUpdateNode);
 
 		try {
 			const messages: ChatMessage[] = newHistory.map((m) => ({
@@ -335,7 +283,7 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 					...(resp.proposals && resp.proposals.length > 0 ? { proposals: resp.proposals } : {})
 				};
 				const withReply = [...newHistory, entry];
-				savePayload({ chatHistory: withReply });
+				savePayload(node, { chatHistory: withReply }, onUpdateNode);
 				applyChatResponse(resp);
 			}
 		} catch (e) {
@@ -347,12 +295,9 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 					content: 'Failed to generate integration plan. Check your API key and try again.'
 				}
 			];
-			savePayload({ chatHistory: withError });
+			savePayload(node, { chatHistory: withError }, onUpdateNode);
 		} finally {
 			sending = false;
-			requestAnimationFrame(() => {
-				if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
-			});
 		}
 	}
 
@@ -361,14 +306,6 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 	function handleKeyDown(e: KeyboardEvent) {
 		if (e.key === 'Escape' && !isEditingTitle) onClose();
 	}
-
-	$effect(() => {
-		if (chatHistory.length && chatContainer) {
-			requestAnimationFrame(() => {
-				chatContainer!.scrollTop = chatContainer!.scrollHeight;
-			});
-		}
-	});
 </script>
 
 <svelte:window onkeydown={handleKeyDown} />
@@ -395,68 +332,15 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 				</div>
 			</div>
 
-			<!-- Chat messages -->
-			<div class="chat-messages" bind:this={chatContainer}>
-				{#if chatHistory.length === 0}
-					<div class="chat-empty">
-						<p>Start a conversation to develop this thought.</p>
-						<p class="chat-empty-hint">
-							Your first message shapes the card. The AI will suggest a title, type, and tags.
-						</p>
-					</div>
-				{/if}
+			<ChatMessages
+				{chatHistory}
+				{sending}
+				contextNodeId={node.id}
+				emptyText="Start a conversation to develop this thought."
+				emptyHint="Your first message shapes the card. The AI will suggest a title, type, and tags."
+			/>
 
-				{#each chatHistory as msg, idx}
-					{@const collapsed = isCollapsed(idx, chatHistory.length)}
-					<div
-						class="chat-msg"
-						class:user={msg.role === 'user'}
-						class:assistant={msg.role === 'assistant'}
-						class:collapsed
-					>
-						<button class="msg-toggle" onclick={() => toggleCollapse(idx)}>
-							<span class="msg-role">{msg.role === 'user' ? 'You' : 'AI'}</span>
-							{#if collapsed}
-								<span class="msg-preview">{firstLine(msg.content)}</span>
-							{/if}
-							<span class="collapse-indicator">{collapsed ? '+' : '−'}</span>
-						</button>
-						{#if !collapsed}
-							{#if msg.role === 'user'}
-								<div class="msg-content">{msg.content}</div>
-							{:else}
-								<div class="msg-content markdown-body">{@html renderMarkdown(msg.content)}</div>
-							{/if}
-							{#if msg.proposals?.length}
-								<ProposalReview proposals={msg.proposals} contextNodeId={node.id} />
-							{/if}
-						{/if}
-					</div>
-				{/each}
-
-				{#if sending}
-					<div class="chat-msg assistant">
-						<button class="msg-toggle" disabled>
-							<span class="msg-role">AI</span>
-						</button>
-						<div class="msg-content thinking">Thinking...</div>
-					</div>
-				{/if}
-			</div>
-
-			<div class="chat-input-area">
-				<textarea
-					class="chat-input"
-					placeholder="Type a message..."
-					bind:value={userInput}
-					onkeydown={handleChatKeyDown}
-					disabled={sending}
-					rows="2"
-				></textarea>
-				<button class="chat-send" onclick={handleSend} disabled={sending || !userInput.trim()}>
-					{sending ? '...' : 'Send'}
-				</button>
-			</div>
+			<ChatInput bind:value={userInput} {sending} onSend={handleSend} />
 		</div>
 
 		<!-- Right: Card preview -->
@@ -674,199 +558,6 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 		background: #1a3a1a;
 	}
 	.integrate-btn:disabled {
-		opacity: 0.4;
-		cursor: default;
-	}
-
-	/* Integration panel */
-
-	/* Chat messages */
-	.chat-messages {
-		flex: 1;
-		overflow-y: auto;
-		padding: 12px;
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-	}
-	.chat-empty {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		text-align: center;
-		padding: 24px;
-	}
-	.chat-empty p {
-		font-size: 13px;
-		color: #404040;
-	}
-	.chat-empty-hint {
-		font-size: 11px !important;
-		color: #2a2a2a !important;
-		margin-top: 4px;
-	}
-	.chat-msg {
-		display: flex;
-		flex-direction: column;
-	}
-	.msg-toggle {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		width: 100%;
-		padding: 4px 8px;
-		background: none;
-		border: none;
-		cursor: pointer;
-		text-align: left;
-		border-radius: 4px;
-		transition: background 0.1s;
-	}
-	.msg-toggle:hover {
-		background: #1a1a1a;
-	}
-	.msg-toggle:disabled {
-		cursor: default;
-	}
-	.msg-role {
-		font-size: 9px;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.5px;
-		color: #404040;
-		flex-shrink: 0;
-		width: 20px;
-	}
-	.msg-preview {
-		font-size: 11px;
-		color: #525252;
-		flex: 1;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.collapse-indicator {
-		font-size: 11px;
-		color: #404040;
-		flex-shrink: 0;
-		width: 12px;
-		text-align: center;
-	}
-	.msg-content {
-		font-size: 13px;
-		line-height: 1.6;
-		color: #a3a3a3;
-		word-break: break-word;
-		padding: 4px 8px 8px;
-	}
-	.chat-msg.user .msg-content {
-		color: #93c5fd;
-	}
-
-	/* Markdown styles */
-	.msg-content.markdown-body :global(p) {
-		margin: 0 0 8px;
-	}
-	.msg-content.markdown-body :global(p:last-child) {
-		margin-bottom: 0;
-	}
-	.msg-content.markdown-body :global(ul),
-	.msg-content.markdown-body :global(ol) {
-		margin: 4px 0;
-		padding-left: 20px;
-	}
-	.msg-content.markdown-body :global(li) {
-		margin: 2px 0;
-	}
-	.msg-content.markdown-body :global(code) {
-		background: #1a1a1a;
-		padding: 1px 4px;
-		border-radius: 3px;
-		font-size: 12px;
-		color: #e5e5e5;
-	}
-	.msg-content.markdown-body :global(pre) {
-		background: #111;
-		border: 1px solid #262626;
-		border-radius: 6px;
-		padding: 8px;
-		overflow-x: auto;
-		margin: 6px 0;
-	}
-	.msg-content.markdown-body :global(pre code) {
-		background: none;
-		padding: 0;
-	}
-	.msg-content.markdown-body :global(strong) {
-		color: #e5e5e5;
-		font-weight: 600;
-	}
-	.msg-content.markdown-body :global(h1),
-	.msg-content.markdown-body :global(h2),
-	.msg-content.markdown-body :global(h3) {
-		color: #e5e5e5;
-		margin: 8px 0 4px;
-		font-size: 13px;
-		font-weight: 600;
-	}
-	.msg-content.markdown-body :global(blockquote) {
-		border-left: 2px solid #333;
-		padding-left: 8px;
-		margin: 6px 0;
-		color: #737373;
-	}
-	.msg-content.markdown-body :global(hr) {
-		border: none;
-		border-top: 1px solid #262626;
-		margin: 8px 0;
-	}
-	.msg-content.thinking {
-		color: #525252;
-		font-style: italic;
-	}
-
-	.chat-input-area {
-		display: flex;
-		gap: 6px;
-		padding: 12px 16px;
-		border-top: 1px solid #1a1a1a;
-		flex-shrink: 0;
-	}
-	.chat-input {
-		flex: 1;
-		background: #141414;
-		border: 1px solid #2a2a2a;
-		border-radius: 6px;
-		color: #d4d4d4;
-		font-size: 13px;
-		padding: 8px 10px;
-		resize: none;
-		outline: none;
-		font-family: inherit;
-		line-height: 1.4;
-	}
-	.chat-input::placeholder {
-		color: #333;
-	}
-	.chat-input:focus {
-		border-color: #3a3a3a;
-	}
-	.chat-send {
-		background: #1f1f3a;
-		border: 1px solid #2a2a4a;
-		border-radius: 6px;
-		color: #818cf8;
-		font-size: 12px;
-		padding: 4px 12px;
-		cursor: pointer;
-		align-self: flex-end;
-	}
-	.chat-send:hover:not(:disabled) {
-		background: #2a2a4a;
-	}
-	.chat-send:disabled {
 		opacity: 0.4;
 		cursor: default;
 	}

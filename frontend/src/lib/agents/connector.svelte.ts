@@ -12,6 +12,7 @@ import { updateNode as storeUpdateNode, getProjectNodes } from '$lib/stores/node
 import type { NodeType } from '$lib/schemas/node';
 import { logInfo, logWarn, logError } from '$lib/stores/log.svelte';
 import { getGlobalContext } from '$lib/stores/globalContext.svelte';
+import { extractBodyText } from '$lib/node-types';
 
 // ---------------------------------------------------------------------------
 // State
@@ -201,7 +202,7 @@ async function processQueue() {
 		}
 
 		// Extract body text for classification
-		const bodyText = extractText(node.body);
+		const bodyText = extractBodyText(node.body, 10000);
 		const hasBody = !!bodyText?.trim();
 
 		logInfo('connector', `Classifying "${title}"${hasBody ? '' : ' (will generate body)'}…`);
@@ -338,23 +339,6 @@ async function inferEdgesForNode(node: Node, classifiedType: NodeType) {
 	} catch (e) {
 		logError('connector', `Edge inference failed for "${node.title}"`, String(e));
 	}
-}
-
-function extractText(body: Record<string, unknown> | null): string {
-	if (!body) return '';
-	if (body.type === 'doc' && Array.isArray(body.content)) {
-		const parts: string[] = [];
-		for (const block of body.content as Array<Record<string, unknown>>) {
-			if (block?.content && Array.isArray(block.content)) {
-				for (const inline of block.content as Array<Record<string, unknown>>) {
-					if (inline && 'text' in inline) parts.push(String(inline.text));
-				}
-			}
-		}
-		return parts.join(' ');
-	}
-	if ('text' in body) return String(body.text);
-	return '';
 }
 
 function estimateCost(result: ClassificationResult): number | null {
