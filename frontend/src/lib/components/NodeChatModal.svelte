@@ -72,9 +72,6 @@
 	let newTagInput = $state('');
 	let showTagSuggestions = $state(false);
 
-	// Integration state
-	let integrated = $state(false);
-
 	// Derived
 	let colors = $derived(getNodeTypeConfig(node.type));
 	let bodyText = $derived(extractBodyText(node.body, 5000));
@@ -392,14 +389,9 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 			<div class="chat-header">
 				<span class="chat-label">Chat</span>
 				<div class="chat-actions">
-					{#if !integrated}
-						<button class="integrate-btn" onclick={handleIntegrate} disabled={sending}>
-							{sending ? 'Thinking...' : 'Integrate'}
-						</button>
-					{/if}
-					{#if integrated}
-						<span class="integrated-badge">Integrated</span>
-					{/if}
+					<button class="integrate-btn" onclick={handleIntegrate} disabled={sending}>
+						{sending ? 'Thinking...' : 'Integrate'}
+					</button>
 				</div>
 			</div>
 
@@ -458,7 +450,7 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 					placeholder="Type a message..."
 					bind:value={userInput}
 					onkeydown={handleChatKeyDown}
-					disabled={sending || integrated}
+					disabled={sending}
 					rows="2"
 				></textarea>
 				<button class="chat-send" onclick={handleSend} disabled={sending || !userInput.trim()}>
@@ -684,16 +676,6 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 	.integrate-btn:disabled {
 		opacity: 0.4;
 		cursor: default;
-	}
-
-	.integrated-badge {
-		font-size: 10px;
-		color: #22c55e;
-		background: #052e16;
-		border: 1px solid #16a34a;
-		border-radius: 4px;
-		padding: 2px 8px;
-		font-weight: 600;
 	}
 
 	/* Integration panel */

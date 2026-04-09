@@ -7,7 +7,7 @@
 	} from '$lib/agents/chat-response';
 	import { getGlobalContext } from '$lib/stores/globalContext.svelte';
 	import { getProjectNodes } from '$lib/stores/nodes.svelte';
-	import { extractBodyText, getNodeTypeConfig } from '$lib/node-types';
+	import { extractBodyText } from '$lib/node-types';
 	import type { Proposal } from '$lib/proposals';
 	import { marked } from 'marked';
 	import DOMPurify from 'dompurify';

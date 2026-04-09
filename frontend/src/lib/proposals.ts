@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Unified Proposal System — types + parsing
+// Unified Proposal System — types
 // ---------------------------------------------------------------------------
 
 import type { Node, CreateNode, CreateEdge } from '$lib/storage/adapter';
@@ -17,37 +17,4 @@ export interface Proposal {
 	id: string;
 	items: ProposalItem[];
 	rationale: string;
-}
-
-/**
- * Parse `<!--proposals:[...]-->` blocks from AI response text.
- * Returns the cleaned display text and any parsed proposals.
- */
-export function parseProposals(text: string): { displayText: string; proposals: Proposal[] } {
-	let displayText = text;
-	const proposals: Proposal[] = [];
-
-	const match = text.match(/<!--proposals:([\s\S]*?)-->/);
-	if (match) {
-		try {
-			const raw = JSON.parse(match[1]);
-			const arr = Array.isArray(raw) ? raw : [raw];
-			for (let i = 0; i < arr.length; i++) {
-				const p = arr[i];
-				proposals.push({
-					id: `proposal_${i}`,
-					items: (p.items ?? []).map((item: Partial<ProposalItem>) => ({
-						...item,
-						_summary: item._summary ?? 'Change'
-					})),
-					rationale: p.rationale ?? ''
-				});
-			}
-		} catch {
-			/* malformed JSON — ignore */
-		}
-		displayText = displayText.replace(match[0], '').trim();
-	}
-
-	return { displayText, proposals };
 }
