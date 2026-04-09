@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
 import KanbanView from './KanbanView.svelte';
 import type { Node } from '$lib/storage/adapter';
-import { NODE_TYPE_KEYS } from '$lib/node-types';
 
 function makeNode(overrides: Partial<Node> = {}): Node {
 	return {
@@ -17,6 +16,7 @@ function makeNode(overrides: Partial<Node> = {}): Node {
 		status: 'draft',
 		positionX: 0,
 		positionY: 0,
+		sortOrder: null,
 		createdBy: null,
 		createdAt: new Date(),
 		updatedAt: new Date(),
@@ -25,67 +25,64 @@ function makeNode(overrides: Partial<Node> = {}): Node {
 }
 
 describe('KanbanView', () => {
-	it('renders a column for each node type', () => {
+	it('renders a column for each status', () => {
 		const { container } = render(KanbanView, { props: { nodes: [] } });
 		const columns = container.querySelectorAll('.kanban-column');
-		expect(columns.length).toBe(NODE_TYPE_KEYS.length);
+		expect(columns.length).toBe(4); // draft, active, done, archived
 	});
 
-	it('shows column titles', () => {
+	it('shows status column titles', () => {
 		const { container } = render(KanbanView, { props: { nodes: [] } });
 		const titles = Array.from(container.querySelectorAll('.column-title')).map(
 			(el) => el.textContent
 		);
-		expect(titles).toContain('Idea');
-		expect(titles).toContain('Note');
-		expect(titles).toContain('Question');
-		expect(titles).toContain('Task');
+		expect(titles).toContain('Draft');
+		expect(titles).toContain('Active');
+		expect(titles).toContain('Done');
+		expect(titles).toContain('Archived');
 	});
 
-	it('renders notes in the correct columns', () => {
+	it('renders nodes in the correct status columns', () => {
 		const nodes = [
-			makeNode({ type: 'idea', title: 'My Idea' }),
-			makeNode({ type: 'task', title: 'My Task' }),
-			makeNode({ type: 'idea', title: 'Another Idea' })
+			makeNode({ status: 'draft', title: 'Draft Item' }),
+			makeNode({ status: 'active', title: 'Active Item' }),
+			makeNode({ status: 'done', title: 'Done Item' })
 		];
 		const { getByText } = render(KanbanView, { props: { nodes } });
-		expect(getByText('My Idea')).toBeTruthy();
-		expect(getByText('My Task')).toBeTruthy();
-		expect(getByText('Another Idea')).toBeTruthy();
+		expect(getByText('Draft Item')).toBeTruthy();
+		expect(getByText('Active Item')).toBeTruthy();
+		expect(getByText('Done Item')).toBeTruthy();
 	});
 
 	it('shows column counts', () => {
 		const nodes = [
-			makeNode({ type: 'idea', title: 'Idea 1' }),
-			makeNode({ type: 'idea', title: 'Idea 2' }),
-			makeNode({ type: 'task', title: 'Task 1' })
+			makeNode({ status: 'draft', title: 'Draft 1' }),
+			makeNode({ status: 'draft', title: 'Draft 2' }),
+			makeNode({ status: 'active', title: 'Active 1' })
 		];
 		const { container } = render(KanbanView, { props: { nodes } });
 		const counts = container.querySelectorAll('.column-count');
-		// Find the idea column count
 		const countValues = Array.from(counts).map((el) => el.textContent);
-		expect(countValues).toContain('2'); // 2 ideas
-		expect(countValues).toContain('1'); // 1 task
+		expect(countValues).toContain('2'); // 2 drafts
+		expect(countValues).toContain('1'); // 1 active
 	});
 
-	it('shows empty placeholders for columns with no notes', () => {
+	it('shows empty placeholders for columns with no nodes', () => {
 		const { container } = render(KanbanView, { props: { nodes: [] } });
 		const placeholders = container.querySelectorAll('.empty-placeholder');
-		expect(placeholders.length).toBe(NODE_TYPE_KEYS.length);
+		expect(placeholders.length).toBe(4);
 	});
 
-	it('renders body preview on cards', () => {
+	it('sorts cards by sortOrder within a column', () => {
 		const nodes = [
-			makeNode({
-				type: 'idea',
-				title: 'With Body',
-				body: {
-					type: 'doc',
-					content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Card preview text' }] }]
-				}
-			})
+			makeNode({ status: 'draft', title: 'Second', sortOrder: 2000 }),
+			makeNode({ status: 'draft', title: 'First', sortOrder: 1000 }),
+			makeNode({ status: 'draft', title: 'Third', sortOrder: 3000 })
 		];
-		const { getByText } = render(KanbanView, { props: { nodes } });
-		expect(getByText('Card preview text')).toBeTruthy();
+		const { container } = render(KanbanView, { props: { nodes } });
+		const cards = Array.from(container.querySelectorAll('.card-title')).map((el) => el.textContent);
+		expect(cards[0]).toBe('First');
+		expect(cards[1]).toBe('Second');
+		expect(cards[2]).toBe('Third');
 	});
 });

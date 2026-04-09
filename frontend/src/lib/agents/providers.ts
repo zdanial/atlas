@@ -12,7 +12,8 @@ export type Capability =
 	| 'edge_inference'
 	| 'embedding'
 	| 'synthesis'
-	| 'brain_dump';
+	| 'brain_dump'
+	| 'chat';
 
 export interface ProviderConfig {
 	name: string;
@@ -34,7 +35,8 @@ const CAPABILITY_PREFERENCE: Record<Capability, string[]> = {
 	edge_inference: ['openai', 'anthropic'],
 	embedding: ['openai', 'anthropic'],
 	synthesis: ['anthropic', 'openai'],
-	brain_dump: ['anthropic', 'openai']
+	brain_dump: ['anthropic', 'openai'],
+	chat: ['openai', 'anthropic']
 };
 
 // Cheapest defaults for all tasks
@@ -44,14 +46,16 @@ const DEFAULT_MODELS: Record<string, Record<Capability, string>> = {
 		edge_inference: 'claude-haiku-4-5-20251001',
 		embedding: 'claude-haiku-4-5-20251001',
 		synthesis: 'claude-haiku-4-5-20251001',
-		brain_dump: 'claude-haiku-4-5-20251001'
+		brain_dump: 'claude-haiku-4-5-20251001',
+		chat: 'claude-haiku-4-5-20251001'
 	},
 	openai: {
 		classification: 'gpt-4o-mini',
 		edge_inference: 'gpt-4o-mini',
 		embedding: 'text-embedding-3-small',
 		synthesis: 'gpt-4o-mini',
-		brain_dump: 'gpt-4o-mini'
+		brain_dump: 'gpt-4o-mini',
+		chat: 'gpt-4o-mini'
 	}
 };
 
@@ -75,7 +79,8 @@ export const CAPABILITY_LABELS: Record<Capability, string> = {
 	edge_inference: 'Infer edges',
 	synthesis: 'Synthesize epics',
 	brain_dump: 'Brain dump',
-	embedding: 'Embeddings (internal)'
+	embedding: 'Embeddings (internal)',
+	chat: 'Note chat'
 };
 
 type ModelPrefs = Partial<Record<string, Partial<Record<Capability, string>>>>;
@@ -206,6 +211,28 @@ async function callOpenAI(
 	userMessage: string,
 	maxTokens = 1024
 ): Promise<ModelResponse> {
+	return callOpenAIChat(
+		apiKey,
+		model,
+		systemPrompt,
+		[{ role: 'user', content: userMessage }],
+		maxTokens
+	);
+}
+
+export interface ChatMessage {
+	role: 'user' | 'assistant' | 'system';
+	content: string;
+}
+
+/** Call the OpenAI Chat API with full message history. */
+async function callOpenAIChat(
+	apiKey: string,
+	model: string,
+	systemPrompt: string,
+	messages: ChatMessage[],
+	maxTokens = 1024
+): Promise<ModelResponse> {
 	const res = await fetch('https://api.openai.com/v1/chat/completions', {
 		method: 'POST',
 		headers: {
@@ -215,10 +242,8 @@ async function callOpenAI(
 		body: JSON.stringify({
 			model,
 			max_tokens: maxTokens,
-			messages: [
-				{ role: 'system', content: systemPrompt },
-				{ role: 'user', content: userMessage }
-			]
+			response_format: { type: 'json_object' },
+			messages: [{ role: 'system', content: systemPrompt }, ...messages]
 		})
 	});
 
@@ -233,6 +258,53 @@ async function callOpenAI(
 	const text = data.choices?.[0]?.message?.content ?? '';
 	const tokens = (data.usage?.prompt_tokens ?? 0) + (data.usage?.completion_tokens ?? 0);
 	logInfo('providers', `OpenAI ${model} responded (${tokens} tokens)`);
+	return { text, model, tokens };
+}
+
+/** Call the Anthropic Messages API with full message history. */
+async function callAnthropicChat(
+	apiKey: string,
+	model: string,
+	systemPrompt: string,
+	messages: ChatMessage[],
+	maxTokens = 1024
+): Promise<ModelResponse> {
+	const apiMessages = messages
+		.filter((m) => m.role !== 'system')
+		.map((m) => ({ role: m.role, content: m.content }));
+
+	// Add JSON prefill to force structured output
+	apiMessages.push({ role: 'assistant', content: '{' });
+
+	const res = await fetch('https://api.anthropic.com/v1/messages', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'x-api-key': apiKey,
+			'anthropic-version': '2023-06-01',
+			'anthropic-dangerous-direct-browser-access': 'true'
+		},
+		body: JSON.stringify({
+			model,
+			max_tokens: maxTokens,
+			system: systemPrompt,
+			messages: apiMessages
+		})
+	});
+
+	if (!res.ok) {
+		const body = await res.text();
+		const err = `Anthropic API error ${res.status}: ${body}`;
+		logError('providers', `Anthropic ${model} failed`, err);
+		throw new Error(err);
+	}
+
+	const data = await res.json();
+	// Prepend '{' to match the JSON prefill we sent as assistant message
+	const rawText = data.content?.[0]?.text ?? '';
+	const text = '{' + rawText;
+	const tokens = (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0);
+	logInfo('providers', `Anthropic ${model} responded (${tokens} tokens)`);
 	return { text, model, tokens };
 }
 
@@ -257,6 +329,32 @@ export async function callModel(
 			return callAnthropic(provider.apiKey, provider.model, systemPrompt, userMessage, maxTokens);
 		case 'openai':
 			return callOpenAI(provider.apiKey, provider.model, systemPrompt, userMessage, maxTokens);
+		default:
+			logWarn('providers', `Unknown provider "${provider.name}" — skipping`);
+			return null;
+	}
+}
+
+/**
+ * Call an LLM with full message history (multi-turn chat).
+ * Routes to the best available provider for the 'chat' capability.
+ * Returns null if no provider is available.
+ */
+export async function callChat(
+	systemPrompt: string,
+	messages: ChatMessage[],
+	maxTokens = 2048
+): Promise<ModelResponse | null> {
+	const provider = getProviderForCapability('chat');
+	if (!provider) return null;
+
+	logInfo('providers', `Calling ${provider.name} (${provider.model}) for chat`);
+
+	switch (provider.name) {
+		case 'openai':
+			return callOpenAIChat(provider.apiKey, provider.model, systemPrompt, messages, maxTokens);
+		case 'anthropic':
+			return callAnthropicChat(provider.apiKey, provider.model, systemPrompt, messages, maxTokens);
 		default:
 			logWarn('providers', `Unknown provider "${provider.name}" — skipping`);
 			return null;

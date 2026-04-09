@@ -37,7 +37,11 @@ const CLASSIFIABLE_TYPES: NodeType[] = [
 	'note'
 ];
 
-function buildSystemPrompt(hasBody: boolean, globalContext?: string): string {
+function buildSystemPrompt(
+	hasBody: boolean,
+	globalContext?: string,
+	existingTags?: string[]
+): string {
 	const contextSection = globalContext?.trim()
 		? `\nProject context (for background):\n${globalContext.trim()}\n`
 		: '';
@@ -62,7 +66,7 @@ function buildSystemPrompt(hasBody: boolean, globalContext?: string): string {
 
 Given a note's title and optional existing body, you must:
 1. Classify into ONE of: goal, problem, hypothesis, idea, constraint, decision, question, risk, insight, reference, bet, note
-2. Generate 2-5 short lowercase tags (single words or hyphenated phrases) for clustering and context
+2. Generate 2-5 short lowercase tags (single words or hyphenated phrases) representing project areas.${existingTags && existingTags.length > 0 ? ` Prefer tags from this existing list: [${existingTags.join(', ')}]. Only create new tags if none fit.` : ''}
 3. ${bodyInstruction}
 
 Respond with ONLY a JSON object (no markdown):
@@ -71,6 +75,7 @@ Respond with ONLY a JSON object (no markdown):
 
 export interface ClassifyOptions {
 	globalContext?: string;
+	existingTags?: string[];
 }
 
 /**
@@ -86,7 +91,13 @@ export async function classifyNote(
 
 	// Try LLM classification first
 	try {
-		const result = await classifyWithLLM(title, bodyText, hasBody, opts.globalContext);
+		const result = await classifyWithLLM(
+			title,
+			bodyText,
+			hasBody,
+			opts.globalContext,
+			opts.existingTags
+		);
 		if (result) {
 			logInfo(
 				'classifier',
@@ -117,9 +128,10 @@ async function classifyWithLLM(
 	title: string,
 	bodyText?: string,
 	hasBody = false,
-	globalContext?: string
+	globalContext?: string,
+	existingTags?: string[]
 ): Promise<ClassificationResult | null> {
-	const systemPrompt = buildSystemPrompt(hasBody, globalContext);
+	const systemPrompt = buildSystemPrompt(hasBody, globalContext, existingTags);
 	const userMessage = bodyText ? `Title: ${title}\nBody: ${bodyText}` : `Title: ${title}`;
 
 	const response = await callModel('classification', systemPrompt, userMessage, 512);

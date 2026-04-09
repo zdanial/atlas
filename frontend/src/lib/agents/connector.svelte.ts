@@ -8,7 +8,7 @@
 import { classifyNote, type ClassificationResult } from './classifier';
 import { inferEdges, filterDismissed, type InferredRelation } from '$lib/services/edge-inference';
 import type { StorageAdapter, Node, NodeEdge } from '$lib/storage/adapter';
-import { updateNode as storeUpdateNode } from '$lib/stores/nodes.svelte';
+import { updateNode as storeUpdateNode, getProjectNodes } from '$lib/stores/nodes.svelte';
 import type { NodeType } from '$lib/schemas/node';
 import { logInfo, logWarn, logError } from '$lib/stores/log.svelte';
 import { getGlobalContext } from '$lib/stores/globalContext.svelte';
@@ -209,8 +209,17 @@ async function processQueue() {
 		// Classify — pass global context and whether body already exists
 		callTimestamps.push(Date.now());
 		const globalContext = getGlobalContext();
+		// Gather existing project tags for the classifier to prefer
+		const projectTags = Array.from(
+			new Set(
+				getProjectNodes().flatMap((n) =>
+					Array.isArray(n.payload?.tags) ? (n.payload!.tags as string[]) : []
+				)
+			)
+		);
 		const result = await classifyNote(title, bodyText, {
-			globalContext: globalContext || undefined
+			globalContext: globalContext || undefined,
+			existingTags: projectTags.length > 0 ? projectTags : undefined
 		});
 
 		// Merge new tags into existing payload tags (deduplicated)

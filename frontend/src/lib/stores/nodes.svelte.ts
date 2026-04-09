@@ -135,9 +135,14 @@ export async function createNode(input: CreateNode): Promise<Node> {
 	// Validate base fields
 	createNodeSchema.parse(input);
 
-	// Validate type-specific payload if present
+	// Validate type-specific payload if present (lenient — log warning instead of throwing)
 	if (input.payload) {
-		validatePayload(input.type as NodeType, input.payload);
+		try {
+			validatePayload(input.type as NodeType, input.payload);
+		} catch (e) {
+			console.warn(`Payload validation warning for ${input.type}:`, e);
+			// Continue anyway — AI-generated payloads may have partial fields
+		}
 	}
 
 	const node = await storage.createNode(input);

@@ -10,6 +10,8 @@
 		gridSnap: boolean;
 		gridSize?: number;
 		selectedIds?: Set<string>;
+		timeAxis?: boolean;
+		dayWidth?: number;
 		onCreateNote?: (x: number, y: number) => void;
 		onMoveNote?: (id: string, x: number, y: number) => void;
 		onUpdateNode?: (id: string, patch: Partial<Node>) => void;
@@ -18,7 +20,10 @@
 		onCreateEdge?: (sourceId: string, targetId: string) => void;
 		onContextMenu?: (e: MouseEvent, nodeIds: string[]) => void;
 		onOpenNode?: (id: string) => void;
-		onSynthesize?: (ids: string[]) => void;
+		onIntegrate?: (id: string) => void;
+		onOpenChat?: (id: string) => void;
+		onHoverNode?: (id: string, position: { x: number; y: number }) => void;
+		onLeaveNode?: (id: string) => void;
 	}
 
 	let {
@@ -27,6 +32,8 @@
 		gridSnap,
 		gridSize = 20,
 		selectedIds = new Set<string>(),
+		timeAxis = false,
+		dayWidth = 300,
 		onCreateNote,
 		onMoveNote,
 		onUpdateNode,
@@ -35,8 +42,61 @@
 		onCreateEdge,
 		onContextMenu,
 		onOpenNode,
-		onSynthesize
+		onIntegrate,
+		onOpenChat,
+		onHoverNode,
+		onLeaveNode
 	}: Props = $props();
+
+	// Time axis: reference date is today at midnight
+	const TIME_AXIS_HEADER_HEIGHT = 32;
+	const referenceDate = new Date();
+	referenceDate.setHours(0, 0, 0, 0);
+
+	function canvasXToDate(x: number): Date {
+		const dayOffset = x / dayWidth;
+		const d = new Date(referenceDate);
+		d.setDate(d.getDate() + dayOffset);
+		return d;
+	}
+
+	function dateToCanvasX(date: Date): number {
+		const diffMs = date.getTime() - referenceDate.getTime();
+		return (diffMs / (1000 * 60 * 60 * 24)) * dayWidth;
+	}
+
+	// Visible date range based on viewport
+	let containerWidth = $state(0);
+	let visibleDates = $derived.by(() => {
+		if (!timeAxis) return [];
+		const leftCanvasX = -panX / zoom;
+		const rightCanvasX = (-panX + containerWidth) / zoom;
+		const startDay = Math.floor(leftCanvasX / dayWidth) - 1;
+		const endDay = Math.ceil(rightCanvasX / dayWidth) + 1;
+		const dates: Array<{
+			date: Date;
+			x: number;
+			label: string;
+			isToday: boolean;
+			isWeekend: boolean;
+			isMonthStart: boolean;
+		}> = [];
+		for (let d = startDay; d <= endDay; d++) {
+			const date = new Date(referenceDate);
+			date.setDate(date.getDate() + d);
+			const x = d * dayWidth;
+			const isToday = d === 0;
+			const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+			const isMonthStart = date.getDate() === 1;
+			const label = date.toLocaleDateString('en-US', {
+				weekday: 'short',
+				month: 'short',
+				day: 'numeric'
+			});
+			dates.push({ date, x, label, isToday, isWeekend, isMonthStart });
+		}
+		return dates;
+	});
 
 	// Camera state
 	let panX = $state(0);
@@ -84,16 +144,18 @@
 
 	function screenToCanvas(screenX: number, screenY: number): { x: number; y: number } {
 		const rect = canvasEl.getBoundingClientRect();
+		const headerOffset = timeAxis ? TIME_AXIS_HEADER_HEIGHT : 0;
 		return {
 			x: (screenX - rect.left - panX) / zoom,
-			y: (screenY - rect.top - panY) / zoom
+			y: (screenY - rect.top - headerOffset - panY) / zoom
 		};
 	}
 
 	function canvasToScreen(cx: number, cy: number): { x: number; y: number } {
+		const headerOffset = timeAxis ? TIME_AXIS_HEADER_HEIGHT : 0;
 		return {
 			x: cx * zoom + panX,
-			y: cy * zoom + panY
+			y: cy * zoom + panY + headerOffset
 		};
 	}
 
@@ -303,8 +365,10 @@
 		closeContextMenu();
 	}
 
-	function handleContextSynthesize() {
-		onSynthesize?.(contextMenuNodeIds);
+	function handleContextIntegrate() {
+		if (contextMenuNodeIds.length >= 1) {
+			onIntegrate?.(contextMenuNodeIds[0]);
+		}
 		closeContextMenu();
 	}
 
@@ -444,7 +508,9 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	class="canvas-container"
+	class:has-time-axis={timeAxis}
 	bind:this={canvasEl}
+	bind:clientWidth={containerWidth}
 	role="application"
 	aria-label="Spatial canvas"
 	onpointerdown={onPointerDown}
@@ -457,7 +523,42 @@
 	style:background-size={bgSize}
 	style:--dot-size={dotSize}
 >
-	<div class="canvas-world" style:transform={transformStyle}>
+	<!-- Time axis header -->
+	{#if timeAxis}
+		<div class="time-axis-header" style:height="{TIME_AXIS_HEADER_HEIGHT}px">
+			{#each visibleDates as col}
+				<div
+					class="time-col-header"
+					class:today={col.isToday}
+					class:weekend={col.isWeekend}
+					class:month-start={col.isMonthStart}
+					style:left="{col.x * zoom + panX}px"
+					style:width="{dayWidth * zoom}px"
+				>
+					<span class="time-label">{col.label}</span>
+				</div>
+			{/each}
+		</div>
+	{/if}
+
+	<div
+		class="canvas-world"
+		style:transform={transformStyle}
+		style:top={timeAxis ? `${TIME_AXIS_HEADER_HEIGHT}px` : '0'}
+	>
+		<!-- Day column guides -->
+		{#if timeAxis}
+			{#each visibleDates as col}
+				<div
+					class="day-guide"
+					class:today-guide={col.isToday}
+					class:weekend-guide={col.isWeekend}
+					style:left="{col.x}px"
+					style:width="{dayWidth}px"
+				></div>
+			{/each}
+		{/if}
+
 		<!-- Edge SVG layer -->
 		<svg class="edge-layer">
 			{#each edges as edge (edge.id)}
@@ -530,6 +631,13 @@
 					{onUpdateNode}
 					onOpen={onOpenNode}
 					onDelete={(id) => onDeleteNodes?.([id])}
+					onHover={onHoverNode
+						? (id, e) => {
+								const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+								onHoverNode!(id, { x: rect.right + 4, y: rect.top });
+							}
+						: undefined}
+					onLeave={onLeaveNode}
 				/>
 			</div>
 		{/each}
@@ -551,10 +659,22 @@
 				<span class="context-icon">✕</span>
 				Delete {contextMenuNodeIds.length > 1 ? `(${contextMenuNodeIds.length})` : ''}
 			</button>
-			{#if contextMenuNodeIds.length >= 2 && onSynthesize}
-				<button class="context-item" onclick={handleContextSynthesize}>
+			{#if contextMenuNodeIds.length >= 1 && onIntegrate}
+				<button class="context-item" onclick={handleContextIntegrate}>
 					<span class="context-icon">◈</span>
-					Synthesize ({contextMenuNodeIds.length})
+					Integrate
+				</button>
+			{/if}
+			{#if contextMenuNodeIds.length === 1 && onOpenChat}
+				<button
+					class="context-item"
+					onclick={() => {
+						onOpenChat?.(contextMenuNodeIds[0]);
+						closeContextMenu();
+					}}
+				>
+					<span class="context-icon">💬</span>
+					Chat about this
 				</button>
 			{/if}
 			<div class="context-separator"></div>
@@ -727,5 +847,73 @@
 		height: 8px;
 		border-radius: 50%;
 		flex-shrink: 0;
+	}
+
+	/* Time axis */
+	.time-axis-header {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		z-index: 5;
+		background: #0d0d0d;
+		border-bottom: 1px solid #1f1f1f;
+		overflow: hidden;
+		pointer-events: none;
+	}
+
+	.time-col-header {
+		position: absolute;
+		top: 0;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		padding-left: 8px;
+		border-left: 1px solid #1a1a1a;
+		box-sizing: border-box;
+	}
+
+	.time-col-header.today {
+		border-left: 2px solid #6366f1;
+		background: rgba(99, 102, 241, 0.06);
+	}
+
+	.time-col-header.weekend {
+		background: rgba(255, 255, 255, 0.015);
+	}
+
+	.time-col-header.month-start {
+		border-left: 2px solid #525252;
+	}
+
+	.time-label {
+		font-size: 10px;
+		color: #525252;
+		white-space: nowrap;
+		font-weight: 500;
+	}
+
+	.time-col-header.today .time-label {
+		color: #818cf8;
+		font-weight: 600;
+	}
+
+	.day-guide {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		height: 200000px;
+		border-left: 1px solid #111;
+		pointer-events: none;
+		z-index: 0;
+	}
+
+	.day-guide.today-guide {
+		border-left: 1px solid rgba(99, 102, 241, 0.2);
+		background: rgba(99, 102, 241, 0.02);
+	}
+
+	.day-guide.weekend-guide {
+		background: rgba(255, 255, 255, 0.008);
 	}
 </style>

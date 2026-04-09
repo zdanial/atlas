@@ -47,6 +47,7 @@ class InMemoryAdapter implements StorageAdapter {
 			status: input.status ?? 'active',
 			positionX: input.positionX ?? null,
 			positionY: input.positionY ?? null,
+			sortOrder: input.sortOrder ?? null,
 			createdBy: null,
 			createdAt: now,
 			updatedAt: now

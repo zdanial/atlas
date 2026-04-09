@@ -19,6 +19,8 @@ export const NODE_TYPES: Record<string, NodeTypeConfig> = {
 	reference: { label: 'Reference', bg: '#1a1f2a', badge: '#3b82f6', border: '#2563eb' },
 	bet: { label: 'Bet', bg: '#2a1a2a', badge: '#ec4899', border: '#db2777' },
 	task: { label: 'Task', bg: '#1f1f1a', badge: '#eab308', border: '#ca8a04' },
+	feature: { label: 'Feature', bg: '#1a2a1f', badge: '#22c55e', border: '#16a34a' },
+	initiative: { label: 'Initiative', bg: '#2a1f2a', badge: '#c084fc', border: '#a855f7' },
 	intent: { label: 'Intent', bg: '#1a2a2a', badge: '#14b8a6', border: '#0d9488' },
 	epic: { label: 'Epic', bg: '#1a1f2a', badge: '#6366f1', border: '#4f46e5' },
 	phase: { label: 'Phase', bg: '#1a1a2a', badge: '#818cf8', border: '#6366f1' },

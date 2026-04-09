@@ -12,6 +12,8 @@
 		onUpdateNode?: (id: string, patch: Partial<Node>) => void;
 		onOpen?: (id: string) => void;
 		onDelete?: (id: string) => void;
+		onHover?: (id: string, e: MouseEvent) => void;
+		onLeave?: (id: string) => void;
 	}
 
 	let {
@@ -22,7 +24,9 @@
 		onClick,
 		onUpdateNode,
 		onOpen,
-		onDelete
+		onDelete,
+		onHover,
+		onLeave
 	}: Props = $props();
 
 	let isEditing = $state(false);
@@ -125,8 +129,14 @@
 	onpointerdown={handlePointerDown}
 	onclick={handleClick}
 	ondblclick={handleDblClick}
-	onmouseenter={() => (isHovered = true)}
-	onmouseleave={() => (isHovered = false)}
+	onmouseenter={(e) => {
+		isHovered = true;
+		onHover?.(node.id, e);
+	}}
+	onmouseleave={() => {
+		isHovered = false;
+		onLeave?.(node.id);
+	}}
 >
 	<div class="note-header">
 		<button class="type-badge" style:background-color={colors.badge} onclick={handleBadgeClick}>
