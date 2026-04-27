@@ -146,7 +146,9 @@ fn classify(v: &Value) -> Vec<CcEvent> {
                     match bt {
                         "text" => {
                             if let Some(t) = block["text"].as_str() {
-                                out.push(CcEvent::AssistantText { text: t.to_string() });
+                                out.push(CcEvent::AssistantText {
+                                    text: t.to_string(),
+                                });
                             }
                         }
                         "tool_use" => {
