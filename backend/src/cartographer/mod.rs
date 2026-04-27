@@ -312,15 +312,14 @@ async fn run_analysis_streaming(
                     summary,
                 });
             }
-            CcEvent::ToolResult { is_error, summary } => {
-                if is_error {
-                    broadcast_clone.publish(WsEvent::CartographerTool {
-                        agent_run_id: run_id_clone.clone(),
-                        tool: "tool_error".into(),
-                        summary,
-                    });
-                }
+            CcEvent::ToolResult { is_error, summary } if is_error => {
+                broadcast_clone.publish(WsEvent::CartographerTool {
+                    agent_run_id: run_id_clone.clone(),
+                    tool: "tool_error".into(),
+                    summary,
+                });
             }
+            CcEvent::ToolResult { .. } => {}
             CcEvent::AssistantText { text } => {
                 // Accumulate text and parse FINDING: lines as they complete
                 text_buf.push_str(&text);
@@ -349,18 +348,17 @@ async fn run_analysis_streaming(
             CcEvent::Result { .. } => {
                 // Final result event — main loop ends shortly after
             }
-            CcEvent::Exit { code, stderr } => {
-                if code != 0 {
-                    broadcast_clone.publish(WsEvent::CartographerTool {
-                        agent_run_id: run_id_clone.clone(),
-                        tool: "claude_exit".into(),
-                        summary: format!(
-                            "exit {code}: {}",
-                            stderr.chars().take(200).collect::<String>()
-                        ),
-                    });
-                }
+            CcEvent::Exit { code, stderr } if code != 0 => {
+                broadcast_clone.publish(WsEvent::CartographerTool {
+                    agent_run_id: run_id_clone.clone(),
+                    tool: "claude_exit".into(),
+                    summary: format!(
+                        "exit {code}: {}",
+                        stderr.chars().take(200).collect::<String>()
+                    ),
+                });
             }
+            CcEvent::Exit { .. } => {}
             CcEvent::Error { error } => {
                 broadcast_clone.publish(WsEvent::CartographerTool {
                     agent_run_id: run_id_clone.clone(),
