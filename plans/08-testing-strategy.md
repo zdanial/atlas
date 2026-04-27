@@ -1,4 +1,4 @@
-# Atlas — Testing Strategy
+# Butterfly — Testing Strategy
 
 Testing is not an afterthought bolted onto milestones. It's a parallel work stream that runs continuously, with dedicated time in every milestone for test infrastructure, coverage, and validation documentation.
 

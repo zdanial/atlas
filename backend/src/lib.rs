@@ -2,6 +2,7 @@ pub mod ai;
 pub mod cartographer;
 pub mod db;
 pub mod routes;
+pub mod watcher;
 pub mod ws;
 
 use axum::Router;

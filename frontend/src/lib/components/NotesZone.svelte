@@ -1,12 +1,12 @@
 <script lang="ts">
+	import { onMount, onDestroy } from 'svelte';
 	import Canvas from '$lib/components/Canvas.svelte';
 	import KanbanView from '$lib/components/KanbanView.svelte';
-	import GraphView from '$lib/components/GraphView.svelte';
-	import RoadmapView from '$lib/components/RoadmapView.svelte';
+	import ThreadView from '$lib/components/ThreadView.svelte';
 	import BrainDumpDialog from '$lib/components/BrainDumpDialog.svelte';
 	import CompactionPanel from '$lib/components/CompactionPanel.svelte';
-	import ConnectorStatus from '$lib/components/ConnectorStatus.svelte';
 	import NodeChatModal from '$lib/components/NodeChatModal.svelte';
+	import TagManager from '$lib/components/TagManager.svelte';
 	import type { Node, NodeEdge } from '$lib/storage/adapter';
 	import { tagColor } from '$lib/utils/chat-helpers';
 	import {
@@ -18,11 +18,52 @@
 		createEdge,
 		getNode
 	} from '$lib/stores/nodes.svelte';
-	import { pushOperation, undo, redo, canUndo, canRedo } from '$lib/stores/history.svelte';
+	import { pushOperation } from '$lib/stores/history.svelte';
 	import { debounceClassification } from '$lib/agents/connector.svelte';
-	import { dismissEdge } from '$lib/services/edge-inference';
+	import { onDemoAction } from '$lib/demo/actions';
 
 	import type { UpdateNodeInput } from '$lib/schemas/node';
+
+	// Demo event listeners
+	let demoCleanups: Array<() => void> = [];
+	onMount(() => {
+		demoCleanups = [
+			onDemoAction('demo:open-brain-dump', () => {
+				showBrainDump = true;
+			}),
+			onDemoAction('demo:select-note', (detail) => {
+				const titleHint = (detail?.title as string | undefined)?.toLowerCase();
+				const target = titleHint
+					? allL5Nodes.find((n) => n.title.toLowerCase().includes(titleHint))
+					: allL5Nodes[0];
+				if (target) selectedNodeIds = new Set([target.id]);
+			}),
+			onDemoAction('demo:open-thread', (detail) => {
+				const titleHint = (detail?.title as string | undefined)?.toLowerCase();
+				const target = titleHint
+					? allL5Nodes.find((n) => n.title.toLowerCase().includes(titleHint))
+					: allL5Nodes[0];
+				if (target) threadRootId = target.id;
+			}),
+			onDemoAction('demo:open-node-chat', (detail) => {
+				const titleHint = (detail?.title as string | undefined)?.toLowerCase();
+				const target = titleHint
+					? allL5Nodes.find((n) => n.title.toLowerCase().includes(titleHint))
+					: allL5Nodes[0];
+				if (target) openNodeId = target.id;
+			}),
+			onDemoAction('demo:open-compact', () => {
+				const first = allL5Nodes[0];
+				const second = allL5Nodes[1];
+				const ids = [first?.id, second?.id].filter(Boolean) as string[];
+				if (ids.length > 0) selectedNodeIds = new Set(ids);
+				showCompact = true;
+			})
+		];
+	});
+	onDestroy(() => {
+		demoCleanups.forEach((fn) => fn());
+	});
 
 	interface Props {
 		projectId: string;
@@ -30,16 +71,17 @@
 
 	let { projectId }: Props = $props();
 
-	type ViewMode = 'canvas' | 'kanban' | 'graph' | 'roadmap';
+	type ViewMode = 'canvas' | 'kanban';
 
 	let view = $state<ViewMode>('canvas');
 	let gridSnap = $state(true);
 	let selectedNodeIds = $state<Set<string>>(new Set());
 	let showBrainDump = $state(false);
 	let showCompact = $state(false);
+	let showTagManager = $state(false);
+	let pendingIntegrate = $state(false);
 	let openNodeId = $state<string | null>(null);
-	let showContext = $state(false);
-	let contextDraft = $state('');
+	let threadRootId = $state<string | null>(null);
 
 	let openNode = $derived(openNodeId ? (getNode(openNodeId) ?? null) : null);
 	let selectedTags = $state<Set<string>>(new Set());
@@ -91,20 +133,6 @@
 			positionY: y
 		});
 		pushOperation({ type: 'create_node', node });
-	}
-
-	async function handleAcceptEdge(sourceId: string, targetId: string, relationType: string) {
-		const edge = await createEdge({
-			sourceId,
-			targetId,
-			relationType,
-			source: 'ai'
-		});
-		pushOperation({ type: 'create_edge', edge });
-	}
-
-	function handleDismissEdge(sourceId: string, targetId: string) {
-		dismissEdge(sourceId, targetId);
 	}
 
 	async function handleMoveNote(id: string, x: number, y: number) {
@@ -187,7 +215,10 @@
 				projectId,
 				title: result.title,
 				body: bodyDoc,
-				payload: { tags: Array.from(result.tags) },
+				payload: {
+					tags: Array.from(result.tags),
+					compactedFrom: result.sourceNodeIds
+				},
 				status: 'active',
 				positionX: 200,
 				positionY: 200
@@ -221,6 +252,32 @@
 		}
 	}
 
+	async function handleForkNode(parentId: string) {
+		const parent = getNode(parentId);
+		if (!parent) return;
+		const child = await createNode({
+			type: 'note',
+			layer: NOTES_LAYER,
+			projectId,
+			title: 'Untitled',
+			status: 'draft',
+			positionX: (parent.positionX ?? 0) + 250,
+			positionY: (parent.positionY ?? 0) + 150
+		});
+		await createEdge({
+			sourceId: parentId,
+			targetId: child.id,
+			relationType: 'supports',
+			source: 'human'
+		});
+		pushOperation({ type: 'create_node', node: child });
+		openNodeId = child.id;
+	}
+
+	function handleOpenThread(nodeId: string) {
+		threadRootId = nodeId;
+	}
+
 	function handleSelectNodes(ids: Set<string>) {
 		selectedNodeIds = ids;
 	}
@@ -232,7 +289,7 @@
 		<span class="zone-title">Notes</span>
 		<span class="separator">|</span>
 
-		{#each ['canvas', 'kanban', 'graph', 'roadmap'] as v}
+		{#each ['canvas', 'kanban'] as v}
 			<button class="tb-btn" class:active={view === v} onclick={() => (view = v as ViewMode)}>
 				{v}
 			</button>
@@ -250,12 +307,15 @@
 		<button
 			class="tb-btn"
 			class:compact-active={showCompact}
+			data-demo="compact-btn"
 			onclick={() => (showCompact = !showCompact)}
 		>
 			Compact
 		</button>
 
-		<button class="tb-btn" onclick={() => (showBrainDump = true)}> Import </button>
+		<button class="tb-btn" data-demo="import-btn" onclick={() => (showBrainDump = true)}>
+			Import
+		</button>
 
 		{#if allProjectTags.length > 0}
 			<span class="separator">|</span>
@@ -272,22 +332,22 @@
 					</button>
 				{/each}
 			</div>
+			<button class="tb-btn tag-gear" onclick={() => (showTagManager = true)} title="Manage tags">
+				&#9881;
+			</button>
 		{/if}
-
-		<span class="separator">|</span>
-
-		<ConnectorStatus onAcceptEdge={handleAcceptEdge} onDismissEdge={handleDismissEdge} />
 
 		{#if selectedNodeIds.size >= 1}
 			<button
-				class="tb-btn integrate-sel"
+				class="tb-btn promote-sel"
+				data-demo="promote-btn"
 				onclick={() => {
-					const firstId = [...selectedNodeIds][0];
-					openNodeId = firstId;
+					openNodeId = [...selectedNodeIds][0];
+					pendingIntegrate = true;
 				}}
-				title="Open note and integrate into plan"
+				title="Promote note into planning structure with AI"
 			>
-				Integrate ({selectedNodeIds.size})
+				Promote ({selectedNodeIds.size})
 			</button>
 		{/if}
 		{#if selectedNodeIds.size >= 2}
@@ -310,7 +370,15 @@
 				</div>
 			{/if}
 
-			{#if view === 'canvas'}
+			{#if threadRootId}
+				<ThreadView
+					rootId={threadRootId}
+					nodes={notesNodes}
+					edges={projectEdges}
+					onClose={() => (threadRootId = null)}
+					onOpenNode={handleOpenNode}
+				/>
+			{:else if view === 'canvas'}
 				<Canvas
 					nodes={notesNodes}
 					edges={projectEdges}
@@ -325,27 +393,17 @@
 					onCreateEdge={handleCreateEdge}
 					onOpenNode={handleOpenNode}
 					onIntegrate={handleOpenNode}
+					onPromote={(ids) => {
+						openNodeId = ids[0];
+						pendingIntegrate = true;
+					}}
 					onOpenChat={handleOpenNode}
+					onForkNode={handleForkNode}
+					onOpenThread={handleOpenThread}
 				/>
 			{:else if view === 'kanban'}
 				<KanbanView
 					nodes={notesNodes}
-					onUpdateNode={handleUpdateNode}
-					onOpenNode={handleOpenNode}
-				/>
-			{:else if view === 'graph'}
-				<GraphView
-					nodes={notesNodes}
-					edges={projectEdges}
-					selectedIds={selectedNodeIds}
-					onSelectNode={(id) => (selectedNodeIds = new Set([id]))}
-					onOpenNode={handleOpenNode}
-				/>
-			{:else if view === 'roadmap'}
-				<RoadmapView
-					nodes={notesNodes}
-					edges={projectEdges}
-					{allNodes}
 					onUpdateNode={handleUpdateNode}
 					onOpenNode={handleOpenNode}
 				/>
@@ -356,8 +414,13 @@
 			<NodeChatModal
 				node={openNode}
 				{projectId}
+				autoIntegrate={pendingIntegrate}
+				onIntegrateStarted={() => (pendingIntegrate = false)}
 				onUpdateNode={handleUpdateNode}
-				onClose={() => (openNodeId = null)}
+				onClose={() => {
+					openNodeId = null;
+					pendingIntegrate = false;
+				}}
 			/>
 		{/if}
 	</div>
@@ -375,6 +438,10 @@
 
 	{#if showBrainDump}
 		<BrainDumpDialog {projectId} onClose={() => (showBrainDump = false)} />
+	{/if}
+
+	{#if showTagManager}
+		<TagManager onClose={() => (showTagManager = false)} />
 	{/if}
 </div>
 
@@ -440,9 +507,9 @@
 		border: 1px solid #134e4a;
 	}
 
-	.tb-btn.integrate-sel {
-		color: #22c55e;
-		border: 1px solid #14532d;
+	.tb-btn.promote-sel {
+		color: #818cf8;
+		border: 1px solid #3730a3;
 	}
 
 	.notes-content {
@@ -514,5 +581,10 @@
 		border-radius: 50%;
 		background: var(--tag-color);
 		flex-shrink: 0;
+	}
+
+	.tag-gear {
+		font-size: 13px;
+		padding: 2px 4px;
 	}
 </style>

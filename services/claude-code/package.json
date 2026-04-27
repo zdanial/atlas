@@ -1,0 +1,10 @@
+{
+  "name": "butterfly-claude-code",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Thin HTTP wrapper around Claude Code CLI for Butterfly",
+  "main": "server.js",
+  "dependencies": {
+    "fastify": "^5.0.0"
+  }
+}

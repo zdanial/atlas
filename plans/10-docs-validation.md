@@ -1,4 +1,4 @@
-# Atlas — Documentation & Feature Validation
+# Butterfly — Documentation & Feature Validation
 
 Documentation is generated, validated, and versioned — never a chore someone does after the fact.
 
@@ -47,7 +47,7 @@ frontend/src/lib/components/
 Using **Histoire** (Svelte-native Storybook alternative):
 - Every component has a `.stories.svelte` file showing all visual states
 - Stories serve as living documentation — if a component changes, the story reflects it
-- Published to a static site on every release: `atlas-docs.example.com/components`
+- Published to a static site on every release: `butterfly-docs.example.com/components`
 
 ### 3. Architecture Decision Records (ADRs)
 

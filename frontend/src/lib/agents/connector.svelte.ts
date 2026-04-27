@@ -6,10 +6,8 @@
  */
 
 import { classifyNote, type ClassificationResult } from './classifier';
-import { inferEdges, filterDismissed, type InferredRelation } from '$lib/services/edge-inference';
-import type { StorageAdapter, Node, NodeEdge } from '$lib/storage/adapter';
+import type { StorageAdapter, Node } from '$lib/storage/adapter';
 import { updateNode as storeUpdateNode, getProjectNodes } from '$lib/stores/nodes.svelte';
-import type { NodeType } from '$lib/schemas/node';
 import { logInfo, logWarn, logError } from '$lib/stores/log.svelte';
 import { getGlobalContext } from '$lib/stores/globalContext.svelte';
 import { extractBodyText } from '$lib/node-types';
@@ -31,9 +29,6 @@ let activeNodeId = $state<string | null>(null);
 
 /** Most recent classification results (for UI display). */
 let recentResults = $state<Array<{ nodeId: string; result: ClassificationResult }>>([]);
-
-/** Pending edge suggestions awaiting user review. */
-let pendingSuggestions = $state<InferredRelation[]>([]);
 
 /** Set of node IDs we've already classified (avoid re-processing). */
 const classifiedNodes = new Set<string>();
@@ -58,7 +53,6 @@ export function startConnector(adapter: StorageAdapter, pid: string) {
 	classifiedNodes.clear();
 	queue = [];
 	recentResults = [];
-	pendingSuggestions = [];
 
 	logInfo('connector', `Started for project ${pid}`);
 
@@ -118,19 +112,8 @@ export function getRecentResults(): Array<{ nodeId: string; result: Classificati
 	return recentResults;
 }
 
-export function getPendingSuggestions(): InferredRelation[] {
-	return pendingSuggestions;
-}
-
 export function isConnectorRunning(): boolean {
 	return running;
-}
-
-/** Clear a suggestion (accepted or dismissed). */
-export function clearSuggestion(sourceId: string, targetId: string) {
-	pendingSuggestions = pendingSuggestions.filter(
-		(s) => !(s.sourceId === sourceId && s.targetId === targetId)
-	);
 }
 
 // ---------------------------------------------------------------------------
@@ -294,9 +277,6 @@ async function processQueue() {
 
 		classifiedNodes.add(nodeId);
 		recentResults = [{ nodeId, result }, ...recentResults.slice(0, 9)];
-
-		// Infer edges for newly classified node
-		await inferEdgesForNode(node, result.type);
 	} catch (e) {
 		logError('connector', `Classification failed for node ${nodeId}`, String(e));
 		// Put back in queue on failure (will retry next cycle)
@@ -307,37 +287,6 @@ async function processQueue() {
 	// Continue processing
 	if (queue.length > 0) {
 		setTimeout(processQueue, 200);
-	}
-}
-
-async function inferEdgesForNode(node: Node, classifiedType: NodeType) {
-	if (!storage || !projectId) return;
-
-	try {
-		const allNodes = await storage.listNodes({ projectId });
-		const recentNodes = allNodes
-			.filter((n) => n.id !== node.id)
-			.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-			.slice(0, 50);
-
-		// Get existing edges
-		const existingEdges = await storage.getEdges(node.id);
-
-		// Use the classified type for inference
-		const typedNode = { ...node, type: classifiedType };
-		const inferred = inferEdges(typedNode, recentNodes, existingEdges, 5);
-		const filtered = filterDismissed(inferred);
-
-		if (filtered.length > 0) {
-			logInfo(
-				'connector',
-				`Inferred ${filtered.length} edge suggestion${filtered.length === 1 ? '' : 's'} for "${node.title}"`,
-				filtered.map((r) => `${r.relationType}: ${r.reason}`).join(' | ')
-			);
-			pendingSuggestions = [...pendingSuggestions, ...filtered];
-		}
-	} catch (e) {
-		logError('connector', `Edge inference failed for "${node.title}"`, String(e));
 	}
 }
 

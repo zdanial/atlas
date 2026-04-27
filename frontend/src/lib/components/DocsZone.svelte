@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount, onDestroy } from 'svelte';
 	import type { Node, NodeEdge } from '$lib/storage/adapter';
 	import { getProjectNodes, getAllEdges, getNode } from '$lib/stores/nodes.svelte';
 	import { getNodeTypeConfig, extractBodyText } from '$lib/node-types';
@@ -7,6 +8,8 @@
 	import { setActiveZone } from '$lib/stores/zone.svelte';
 	import { navigateToParent } from '$lib/stores/planningNav.svelte';
 	import DocsTraceCard from './DocsTraceCard.svelte';
+	import DocPage from './DocPage.svelte';
+	import { onDemoAction } from '$lib/demo/actions';
 
 	interface Props {
 		projectId: string;
@@ -14,11 +17,64 @@
 
 	let { projectId }: Props = $props();
 
-	type DocsTab = 'overview' | 'built' | 'planned' | 'decisions' | 'questions';
+	type DocsTab = 'overview' | 'built' | 'planned' | 'decisions' | 'questions' | 'wiki';
 	let activeTab = $state<DocsTab>('overview');
+
+	// Wiki tab state
+	let wikiSelectedId = $state<string | null>(null);
+	let wikiSearch = $state('');
+
+	// Demo event listeners
+	let demoCleanups: Array<() => void> = [];
+	onMount(() => {
+		demoCleanups = [
+			onDemoAction('demo:switch-doc-tab', (detail) => {
+				if (detail?.tab) activeTab = detail.tab as DocsTab;
+			}),
+			onDemoAction('demo:select-wiki-node', (detail) => {
+				const titleHint = (detail?.title as string | undefined)?.toLowerCase();
+				const target = titleHint
+					? allNodes.find((n) => n.title.toLowerCase().includes(titleHint))
+					: allNodes[0];
+				if (target) wikiSelectedId = target.id;
+			})
+		];
+	});
+	onDestroy(() => {
+		demoCleanups.forEach((fn) => fn());
+	});
 
 	let allNodes = $derived(getProjectNodes());
 	let allEdges = $derived(getAllEdges());
+
+	// ── Wiki derived state ──────────────────────────────────────
+
+	let wikiFilteredNodes = $derived.by(() => {
+		const q = wikiSearch.toLowerCase();
+		const filtered = q
+			? allNodes.filter(
+					(n) =>
+						n.status !== 'archived' &&
+						(n.title.toLowerCase().includes(q) ||
+							extractBodyText(n.body, 200).toLowerCase().includes(q))
+				)
+			: allNodes.filter((n) => n.status !== 'archived');
+		return filtered.sort((a, b) => a.title.localeCompare(b.title));
+	});
+
+	let wikiGrouped = $derived.by(() => {
+		const groups = new Map<string, Node[]>();
+		for (const n of wikiFilteredNodes) {
+			const list = groups.get(n.type) ?? [];
+			list.push(n);
+			groups.set(n.type, list);
+		}
+		return groups;
+	});
+
+	let wikiSelectedNode = $derived(
+		wikiSelectedId ? (allNodes.find((n) => n.id === wikiSelectedId) ?? null) : null
+	);
 
 	// ── Derived data slices ──────────────────────────────────────
 
@@ -124,6 +180,15 @@
 		}
 	}
 
+	function wikiNavigate(nodeId: string) {
+		wikiSelectedId = nodeId;
+	}
+
+	function wikiEdit(nodeId: string) {
+		const node = allNodes.find((n) => n.id === nodeId);
+		if (node) navigateTo(node);
+	}
+
 	function statusDot(status: string): string {
 		if (status === 'done') return '\u2713';
 		if (status === 'active') return '\u25CF';
@@ -155,11 +220,12 @@
 	<div class="docs-toolbar">
 		<span class="zone-title">Docs</span>
 		<span class="separator">|</span>
-		<div class="tab-bar">
-			{#each ['overview', 'built', 'planned', 'decisions', 'questions'] as tab}
+		<div class="tab-bar" data-demo="docs-tabs">
+			{#each ['overview', 'built', 'planned', 'decisions', 'questions', 'wiki'] as tab}
 				<button
 					class="tab"
 					class:active={activeTab === tab}
+					data-demo={tab === 'decisions' ? 'docs-decisions-tab' : undefined}
 					onclick={() => (activeTab = tab as DocsTab)}
 				>
 					{tab === 'overview'
@@ -170,7 +236,9 @@
 								? 'Planned'
 								: tab === 'decisions'
 									? 'Decisions'
-									: 'Questions'}
+									: tab === 'questions'
+										? 'Questions'
+										: 'Wiki'}
 				</button>
 			{/each}
 		</div>
@@ -494,6 +562,59 @@
 				{#if questionNodes.length === 0 && epicQuestions.length === 0}
 					<div class="empty-state">No open questions at the moment.</div>
 				{/if}
+			</div>
+			<!-- ═══ WIKI TAB ═══ -->
+		{:else if activeTab === 'wiki'}
+			<div class="wiki-layout">
+				<div class="wiki-sidebar">
+					<input
+						class="wiki-search"
+						type="text"
+						placeholder="Search nodes..."
+						bind:value={wikiSearch}
+					/>
+					<div class="wiki-node-list">
+						{#each [...wikiGrouped] as [type, nodes]}
+							{@const cfg = getNodeTypeConfig(type)}
+							<div class="wiki-group">
+								<div class="wiki-group-title">
+									<span class="wiki-group-dot" style:background={cfg.badge}></span>
+									{cfg.label} ({nodes.length})
+								</div>
+								{#each nodes as n}
+									<button
+										class="wiki-node-btn"
+										class:selected={wikiSelectedId === n.id}
+										onclick={() => wikiNavigate(n.id)}
+									>
+										{n.title}
+									</button>
+								{/each}
+							</div>
+						{/each}
+						{#if wikiFilteredNodes.length === 0}
+							<div class="wiki-empty">No nodes match your search.</div>
+						{/if}
+					</div>
+				</div>
+				<div class="wiki-main">
+					{#if wikiSelectedNode}
+						<DocPage
+							node={wikiSelectedNode}
+							{allNodes}
+							edges={allEdges}
+							onNavigate={wikiNavigate}
+							onEdit={wikiEdit}
+						/>
+					{:else}
+						<div class="wiki-placeholder">
+							<p>Select a node from the sidebar to view it as a document.</p>
+							<p class="wiki-hint">
+								Use <code>[[Node Title]]</code> wikilinks in node bodies to create cross-references.
+							</p>
+						</div>
+					{/if}
+				</div>
 			</div>
 		{/if}
 	</div>
@@ -1119,5 +1240,129 @@
 		height: 200px;
 		font-size: 13px;
 		color: #404040;
+	}
+
+	/* ── Wiki tab ── */
+
+	.wiki-layout {
+		display: flex;
+		height: 100%;
+	}
+
+	.wiki-sidebar {
+		width: 220px;
+		flex-shrink: 0;
+		border-right: 1px solid #1a1a1a;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+
+	.wiki-search {
+		padding: 8px 10px;
+		border: none;
+		border-bottom: 1px solid #1a1a1a;
+		background: #0a0a0a;
+		color: #d4d4d4;
+		font-size: 12px;
+		font-family: inherit;
+		outline: none;
+	}
+
+	.wiki-search::placeholder {
+		color: #404040;
+	}
+
+	.wiki-node-list {
+		flex: 1;
+		overflow-y: auto;
+		padding: 8px 0;
+	}
+
+	.wiki-group {
+		margin-bottom: 8px;
+	}
+
+	.wiki-group-title {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: #525252;
+		padding: 4px 12px;
+	}
+
+	.wiki-group-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		flex-shrink: 0;
+	}
+
+	.wiki-node-btn {
+		display: block;
+		width: 100%;
+		text-align: left;
+		padding: 4px 12px 4px 24px;
+		border: none;
+		background: none;
+		color: #a3a3a3;
+		font-size: 12px;
+		font-family: inherit;
+		cursor: pointer;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.wiki-node-btn:hover {
+		background: #151515;
+		color: #e5e5e5;
+	}
+
+	.wiki-node-btn.selected {
+		background: #1a1a2e;
+		color: #818cf8;
+	}
+
+	.wiki-empty {
+		padding: 20px 12px;
+		font-size: 12px;
+		color: #404040;
+		text-align: center;
+	}
+
+	.wiki-main {
+		flex: 1;
+		min-width: 0;
+		overflow-y: auto;
+	}
+
+	.wiki-placeholder {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		gap: 8px;
+		color: #404040;
+		font-size: 13px;
+	}
+
+	.wiki-hint {
+		font-size: 11px;
+		color: #333;
+	}
+
+	.wiki-hint code {
+		font-family: 'SF Mono', 'Fira Code', monospace;
+		font-size: 11px;
+		background: #1a1a1a;
+		padding: 1px 4px;
+		border-radius: 3px;
+		color: #a78bfa;
 	}
 </style>

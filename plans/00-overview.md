@@ -1,8 +1,8 @@
-# Atlas Implementation Plan — Overview
+# Butterfly Implementation Plan — Overview
 
 ## Summary
 
-Atlas is a spatial thinking canvas that compiles brain dumps into structured specs, tickets, and exportable commands — with full traceability from idea to merged PR. It has 6 layers (Canvas L5 → Intent L4 → Epic L3 → Phase L2 → Ticket L1 → Code L0), 7 named AI planning agents (+ Cartographer for onboarding), and passive GitHub integration. Atlas is the planning brain — it does not spawn or manage coding agents. Work leaves Atlas as exported commands, CLAUDE.md files, or Conductor swarm configs.
+Butterfly is a spatial thinking canvas that compiles brain dumps into structured specs, tickets, and exportable commands — with full traceability from idea to merged PR. It has 6 layers (Canvas L5 → Intent L4 → Epic L3 → Phase L2 → Ticket L1 → Code L0), 7 named AI planning agents (+ Cartographer for onboarding), and passive GitHub integration. Butterfly is the planning brain — it does not spawn or manage coding agents. Work leaves Butterfly as exported commands, CLAUDE.md files, or Conductor swarm configs.
 
 ## Tech Stack
 
@@ -59,10 +59,10 @@ API docs auto-generated (utoipa/OpenAPI). Component docs via Histoire (Svelte St
 Background tasks (Connector loop, cleanup, snapshots) run as tokio tasks in the Rust backend. CI/CD: nightly e2e + benchmarks, weekly agent eval regression + dep audit. Code cleanup scheduled at end of each milestone. Tech debt explicitly tracked and targeted. Release checklist templated. See `11-recurring-processes.md`.
 
 ### Agent Handoff & Export
-Atlas is the planning brain, not the execution runtime. Every ticket compiles into a ready-to-run command (`claude --print "..."`) or downloadable CLAUDE.md with full upstream context. Phases export as ordered batch commands or Conductor swarm configs (JSON with dependency graph + parallelization waves). Copy, paste, go. GitHub integration passively tracks PRs back to tickets. See `05-claude-code-integration.md`.
+Butterfly is the planning brain, not the execution runtime. Every ticket compiles into a ready-to-run command (`claude --print "..."`) or downloadable CLAUDE.md with full upstream context. Phases export as ordered batch commands or Conductor swarm configs (JSON with dependency graph + parallelization waves). Copy, paste, go. GitHub integration passively tracks PRs back to tickets. See `05-claude-code-integration.md`.
 
 ### BYO API Keys (Forge-style)
-API keys power Atlas's *internal* planning agents (Connector, Synthesizer, Architect, etc.) — not coding agents. Capability-based provider registry. Users bring their own keys (Anthropic, OpenAI, Google, DeepSeek). Each agent role maps to a capability with configurable provider/model overrides.
+API keys power Butterfly's *internal* planning agents (Connector, Synthesizer, Architect, etc.) — not coding agents. Capability-based provider registry. Users bring their own keys (Anthropic, OpenAI, Google, DeepSeek). Each agent role maps to a capability with configurable provider/model overrides.
 
 ### Multiple Projects & Multi-Repo
 Workspace → Projects → Repos. Each project can link to multiple repos (frontend, backend, infra). Repos can be shared across projects. Tickets are repo-scoped with repo badges, exported commands `cd` into the correct repo, cross-repo dependencies are tracked. Cross-project views: unified roadmap, cross-project graph, workspace-wide search. See `13-multi-project-multi-repo.md`.

@@ -3,41 +3,18 @@
 		getQueue,
 		getActiveNodeId,
 		getRecentResults,
-		getPendingSuggestions,
-		isConnectorRunning,
-		clearSuggestion
+		isConnectorRunning
 	} from '$lib/agents/connector.svelte';
 	import { getNodeTypeConfig } from '$lib/node-types';
-	import type { InferredRelation } from '$lib/services/edge-inference';
-
-	interface Props {
-		onAcceptEdge?: (sourceId: string, targetId: string, relationType: string) => void;
-		onDismissEdge?: (sourceId: string, targetId: string) => void;
-	}
-
-	let { onAcceptEdge, onDismissEdge }: Props = $props();
-
-	let showSuggestions = $state(false);
 
 	let running = $derived(isConnectorRunning());
 	let activeNode = $derived(getActiveNodeId());
 	let queueLen = $derived(getQueue().length);
-	let suggestions = $derived(getPendingSuggestions());
 	let recent = $derived(getRecentResults());
-
-	function handleAccept(s: InferredRelation) {
-		onAcceptEdge?.(s.sourceId, s.targetId, s.relationType);
-		clearSuggestion(s.sourceId, s.targetId);
-	}
-
-	function handleDismiss(s: InferredRelation) {
-		onDismissEdge?.(s.sourceId, s.targetId);
-		clearSuggestion(s.sourceId, s.targetId);
-	}
 </script>
 
-{#if running}
-	<div class="connector-status">
+<div class="connector-status" data-demo="connector">
+	{#if running}
 		{#if activeNode}
 			<span class="status-indicator classifying"></span>
 			<span class="status-text">Classifying...</span>
@@ -49,12 +26,6 @@
 			<span class="status-text">Ready</span>
 		{/if}
 
-		{#if suggestions.length > 0}
-			<button class="suggestion-badge" onclick={() => (showSuggestions = !showSuggestions)}>
-				{suggestions.length} edge{suggestions.length === 1 ? '' : 's'}
-			</button>
-		{/if}
-
 		{#if recent.length > 0}
 			{@const latest = recent[0]}
 			{@const cfg = getNodeTypeConfig(latest.result.type)}
@@ -62,39 +33,11 @@
 				{latest.result.type}
 			</span>
 		{/if}
-	</div>
-{/if}
-
-{#if showSuggestions && suggestions.length > 0}
-	<div class="suggestions-panel">
-		<div class="suggestions-header">
-			<span>Suggested Edges</span>
-			<button class="close-btn" onclick={() => (showSuggestions = false)}>×</button>
-		</div>
-		{#each suggestions as suggestion}
-			<div class="suggestion-row">
-				<span
-					class="rel-type"
-					class:supports={suggestion.relationType === 'supports'}
-					class:contradicts={suggestion.relationType === 'contradicts'}
-					class:blocks={suggestion.relationType === 'blocks'}
-					class:implements={suggestion.relationType === 'implements'}
-					class:refines={suggestion.relationType === 'refines'}
-					class:duplicates={suggestion.relationType === 'duplicates'}
-				>
-					{suggestion.relationType}
-				</span>
-				<span class="suggestion-reason">{suggestion.reason}</span>
-				<span class="confidence">{Math.round(suggestion.confidence * 100)}%</span>
-				<button class="accept-btn" onclick={() => handleAccept(suggestion)} title="Accept">✓</button
-				>
-				<button class="dismiss-btn" onclick={() => handleDismiss(suggestion)} title="Dismiss"
-					>✕</button
-				>
-			</div>
-		{/each}
-	</div>
-{/if}
+	{:else}
+		<span class="status-indicator off"></span>
+		<span class="status-text">AI off</span>
+	{/if}
+</div>
 
 <style>
 	.connector-status {
@@ -112,6 +55,10 @@
 
 	.status-indicator.ready {
 		background: #22c55e;
+	}
+
+	.status-indicator.off {
+		background: #404040;
 	}
 
 	.status-indicator.queued {

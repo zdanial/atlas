@@ -21,7 +21,10 @@
 		onContextMenu?: (e: MouseEvent, nodeIds: string[]) => void;
 		onOpenNode?: (id: string) => void;
 		onIntegrate?: (id: string) => void;
+		onPromote?: (ids: string[]) => void;
 		onOpenChat?: (id: string) => void;
+		onForkNode?: (id: string) => void;
+		onOpenThread?: (id: string) => void;
 		onHoverNode?: (id: string, position: { x: number; y: number }) => void;
 		onLeaveNode?: (id: string) => void;
 	}
@@ -43,7 +46,10 @@
 		onContextMenu,
 		onOpenNode,
 		onIntegrate,
+		onPromote,
 		onOpenChat,
+		onForkNode,
+		onOpenThread,
 		onHoverNode,
 		onLeaveNode
 	}: Props = $props();
@@ -659,10 +665,46 @@
 				<span class="context-icon">✕</span>
 				Delete {contextMenuNodeIds.length > 1 ? `(${contextMenuNodeIds.length})` : ''}
 			</button>
+			{#if contextMenuNodeIds.length === 1 && onForkNode}
+				<button
+					class="context-item"
+					onclick={() => {
+						onForkNode?.(contextMenuNodeIds[0]);
+						closeContextMenu();
+					}}
+				>
+					<span class="context-icon">⑃</span>
+					Fork
+				</button>
+			{/if}
+			{#if contextMenuNodeIds.length === 1 && onOpenThread}
+				<button
+					class="context-item"
+					onclick={() => {
+						onOpenThread?.(contextMenuNodeIds[0]);
+						closeContextMenu();
+					}}
+				>
+					<span class="context-icon">↕</span>
+					View thread
+				</button>
+			{/if}
+			{#if contextMenuNodeIds.length >= 1 && onPromote}
+				<button
+					class="context-item"
+					onclick={() => {
+						onPromote?.(contextMenuNodeIds);
+						closeContextMenu();
+					}}
+				>
+					<span class="context-icon">⬆</span>
+					Promote to plan
+				</button>
+			{/if}
 			{#if contextMenuNodeIds.length >= 1 && onIntegrate}
 				<button class="context-item" onclick={handleContextIntegrate}>
 					<span class="context-icon">◈</span>
-					Integrate
+					Integrate (AI)
 				</button>
 			{/if}
 			{#if contextMenuNodeIds.length === 1 && onOpenChat}

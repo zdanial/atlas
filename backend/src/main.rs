@@ -1,4 +1,4 @@
-use atlas_server::{ai::registry::ProviderRegistry, db, routes, ws};
+use butterfly_server::{ai::registry::ProviderRegistry, db, routes, watcher, ws};
 
 use axum::{routing::get, Router};
 use std::sync::Arc;
@@ -50,13 +50,21 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .merge(routes::router())
         .route("/ws", get(ws::ws_handler).with_state(broadcast_for_ws))
-        .layer(axum::Extension(broadcast))
+        .layer(axum::Extension(broadcast.clone()))
         .layer(axum::Extension(registry))
         .layer(cors)
         .with_state(pool);
 
+    // Start file watcher for .butterfly/ data directory
+    let watch_dir = std::env::var("BUTTERFLY_DATA_DIR")
+        .unwrap_or_else(|_| ".butterfly".to_string());
+    let _watcher = watcher::start_file_watcher(
+        std::path::PathBuf::from(watch_dir),
+        broadcast.clone(),
+    );
+
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3001").await?;
-    tracing::info!("Atlas server listening on :3001");
+    tracing::info!("Butterfly server listening on :3001");
     axum::serve(listener, app).await?;
 
     Ok(())
@@ -66,6 +74,6 @@ async fn main() -> anyhow::Result<()> {
 mod tests {
     #[test]
     fn router_builds_without_panic() {
-        let _router = atlas_server::app_without_db();
+        let _router = butterfly_server::app_without_db();
     }
 }

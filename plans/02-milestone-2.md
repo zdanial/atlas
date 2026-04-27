@@ -97,7 +97,7 @@ Stream K: Strategist + Historian
 - For desktop (Tauri + Rust backend as sidecar) and lightweight self-host
 
 ### F.5c — Docker Compose (Week 6)
-- `docker-compose.yml`: atlas-frontend (SvelteKit) + atlas-backend (Rust binary) + postgres
+- `docker-compose.yml`: butterfly-frontend (SvelteKit) + butterfly-backend (Rust binary) + postgres
 - Multi-stage `Dockerfile` for Rust backend (build → slim runtime, ~20MB image)
 - `docker compose up` → Mode B running in 30 seconds
 - Seed script with demo data
@@ -326,7 +326,7 @@ Full details in `13-multi-project-multi-repo.md`.
 - [ ] All compilation steps are reversible (draft → accept/reject)
 - [ ] GitHub repo import produces a populated graph within 2 minutes (500 PRs)
 - [ ] Imported nodes have correct source provenance and confidence scores
-- [ ] Timeline scrubber shows backfilled history from before Atlas existed
+- [ ] Timeline scrubber shows backfilled history from before Butterfly existed
 - [ ] Incremental re-sync imports only new PRs/commits
 - [ ] Markdown folder import classifies docs into correct note types
 - [ ] Multiple projects can be created and switched between

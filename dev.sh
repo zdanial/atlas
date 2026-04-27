@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Atlas dev environment launcher
+# Butterfly dev environment launcher
 # Usage: ./dev.sh [frontend|backend|full|db]
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -27,7 +27,7 @@ start_backend() {
   start_db
   echo "▸ Starting backend on http://localhost:3001 (with cargo-watch)..."
   cd "$ROOT/backend"
-  export DATABASE_URL="postgres://postgres:postgres@localhost:6432/atlas"
+  export DATABASE_URL="postgres://postgres:postgres@localhost:6432/butterfly"
   export RUST_LOG="${RUST_LOG:-info}"
 
   if command -v cargo-watch >/dev/null 2>&1; then
@@ -44,7 +44,7 @@ start_full() {
 
   echo "▸ Starting backend (background)..."
   cd "$ROOT/backend"
-  export DATABASE_URL="postgres://postgres:postgres@localhost:6432/atlas"
+  export DATABASE_URL="postgres://postgres:postgres@localhost:6432/butterfly"
   export RUST_LOG="${RUST_LOG:-info}"
 
   if ! command -v cargo-watch >/dev/null 2>&1; then

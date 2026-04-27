@@ -4,7 +4,7 @@ use tower::ServiceExt;
 
 #[tokio::test]
 async fn health_endpoint_returns_ok() {
-    let app = atlas_server::app_without_db();
+    let app = butterfly_server::app_without_db();
 
     let response = app
         .oneshot(

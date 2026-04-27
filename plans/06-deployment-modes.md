@@ -1,6 +1,6 @@
-# Atlas — Deployment Modes & Open Source Strategy
+# Butterfly — Deployment Modes & Open Source Strategy
 
-Atlas is open source (MIT or AGPLv3 — decide before launch). Three deployment modes from zero-infra to full cloud, all from the same codebase.
+Butterfly is open source (MIT or AGPLv3 — decide before launch). Three deployment modes from zero-infra to full cloud, all from the same codebase.
 
 ---
 
@@ -16,7 +16,7 @@ No server, no database, no account. Download and run.
 - **Who it's for:** Solo founders, "just let me think" users, privacy-conscious, air-gapped
 
 ### Mode B: Local Server + PostgreSQL
-Run Atlas as a single Rust binary with a real database. Docker one-liner.
+Run Butterfly as a single Rust binary with a real database. Docker one-liner.
 
 - **Storage:** PostgreSQL (local Docker container or any Postgres instance)
 - **Backend:** Rust (Axum) binary on localhost — single process, ~20MB
@@ -86,7 +86,7 @@ class IndexedDBAdapter implements StorageAdapter {
 
 // Modes B/C: calls Rust API
 class ApiAdapter implements StorageAdapter {
-  private baseUrl: string; // http://localhost:3001 or https://api.atlas.dev
+  private baseUrl: string; // http://localhost:3001 or https://api.butterfly.dev
   // All operations are REST calls to Rust backend
   // WebSocket for realtime updates
 }
@@ -147,7 +147,7 @@ pub fn router() -> Router {
 ## Repository Structure
 
 ```
-atlas/
+butterfly/
 ├── frontend/                       # SvelteKit 2 + Svelte 5
 │   ├── src/
 │   │   ├── routes/                 # SvelteKit file-based routing
@@ -243,8 +243,8 @@ atlas/
 
 ### Mode A: Fully Local (browser only)
 ```bash
-git clone https://github.com/yourusername/atlas
-cd atlas/frontend
+git clone https://github.com/yourusername/butterfly
+cd butterfly/frontend
 pnpm install
 pnpm dev
 # Open http://localhost:5173
@@ -254,8 +254,8 @@ pnpm dev
 
 ### Mode B: Local Server + PostgreSQL
 ```bash
-git clone https://github.com/yourusername/atlas
-cd atlas
+git clone https://github.com/yourusername/butterfly
+cd butterfly
 cp .env.example .env
 # Edit .env: set DATABASE_URL, API keys
 
@@ -267,15 +267,15 @@ docker compose up
 cd backend && cargo build --release
 cd ../frontend && pnpm install
 # Terminal 1:
-DATABASE_URL=postgres://localhost/atlas ./backend/target/release/atlas-server
+DATABASE_URL=postgres://localhost/butterfly ./backend/target/release/butterfly-server
 # Terminal 2:
 cd frontend && pnpm dev
 ```
 
 ### Mode C: Supabase Cloud
 ```bash
-git clone https://github.com/yourusername/atlas
-cd atlas
+git clone https://github.com/yourusername/butterfly
+cd butterfly
 
 # 1. Create Supabase project at supabase.com
 # 2. Copy connection details
@@ -410,7 +410,7 @@ SQLite: feature-flagged `#[cfg(feature = "sqlite")]` with equivalent schema (UUI
 - **AGPLv3** — copyleft, anyone who hosts it must share modifications, protects the community
 - **BSL → MIT** — Business Source License that converts to MIT after 2 years (the Sentry/Grafana model)
 
-Recommendation: **AGPLv3** — Atlas is a tool, not a library. AGPL ensures hosted versions contribute back without limiting local/self-hosted use.
+Recommendation: **AGPLv3** — Butterfly is a tool, not a library. AGPL ensures hosted versions contribute back without limiting local/self-hosted use.
 
 ### Contributing Guide
 - `CONTRIBUTING.md` with: setup, architecture overview, PR conventions

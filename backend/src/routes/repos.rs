@@ -31,6 +31,14 @@ pub struct ConnectRepoBody {
     pub is_primary: Option<bool>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ConnectLocalBody {
+    pub project_id: Uuid,
+    pub path: String,            // absolute filesystem path
+    pub label: Option<String>,   // optional human-friendly name
+    pub is_primary: Option<bool>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct RepoResponse {
     pub repo: RepoView,
@@ -54,6 +62,13 @@ pub struct RepoView {
 #[derive(Debug, Serialize)]
 pub struct AnalyzeTriggerResponse {
     pub agent_run_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AnalyzeQuery {
+    /// Optional override for the cartographer model alias
+    /// (haiku | sonnet | opus). Defaults to sonnet.
+    pub model: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -173,22 +188,8 @@ pub async fn connect_repo(
             })?;
     }
 
-    // Look up workspace_id from the project
-    let workspace_id: Uuid =
-        sqlx::query_as::<_, (Uuid,)>("SELECT workspace_id FROM project WHERE id = $1")
-            .bind(body.project_id)
-            .fetch_optional(&pool)
-            .await
-            .map_err(internal)?
-            .ok_or_else(|| {
-                (
-                    StatusCode::NOT_FOUND,
-                    Json(ErrorResponse {
-                        error: format!("Project {} not found", body.project_id),
-                    }),
-                )
-            })?
-            .0;
+    // Look up workspace_id from the project (auto-create project if missing)
+    let workspace_id = ensure_project_workspace(&pool, body.project_id).await?;
 
     // Insert repo (install_id stores the PAT for Mode B; upgrade to encrypted in Mode C)
     let repo = sqlx::query_as::<_, models::Repo>(
@@ -220,6 +221,97 @@ pub async fn connect_repo(
     };
 
     // Link repo to project via project_repo
+    sqlx::query(
+        "INSERT INTO project_repo (project_id, repo_id, is_primary) \
+         VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+    )
+    .bind(body.project_id)
+    .bind(repo.id)
+    .bind(body.is_primary.unwrap_or(true))
+    .execute(&pool)
+    .await
+    .map_err(internal)?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(RepoResponse {
+            repo: RepoView {
+                id: repo.id.to_string(),
+                full_name: repo.github_repo,
+                default_branch: repo.default_branch,
+                project_id: Some(body.project_id.to_string()),
+                is_primary: body.is_primary,
+            },
+        }),
+    ))
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/repos/local
+// ---------------------------------------------------------------------------
+
+pub async fn connect_local_repo(
+    State(pool): State<Pool>,
+    Json(body): Json<ConnectLocalBody>,
+) -> Result<(StatusCode, Json<RepoResponse>), (StatusCode, Json<ErrorResponse>)> {
+    // Validate path exists and is a directory
+    cartographer::local::validate_path(&body.path).map_err(|e| {
+        (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(ErrorResponse {
+                error: format!("Invalid path: {e}"),
+            }),
+        )
+    })?;
+
+    // Resolve to absolute path so the cartographer can find it later regardless of cwd
+    let abs_path = std::fs::canonicalize(&body.path)
+        .map_err(|e| bad_request(&format!("Cannot canonicalize path: {e}")))?
+        .to_string_lossy()
+        .to_string();
+
+    // Sentinel format: "local:<absolute_path>"
+    let full_name = format!("local:{abs_path}");
+    let label = body.label.unwrap_or_else(|| {
+        std::path::Path::new(&abs_path)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or(&abs_path)
+            .to_string()
+    });
+
+    // Look up workspace_id from project (auto-create project if missing)
+    let workspace_id = ensure_project_workspace(&pool, body.project_id).await?;
+
+    // Insert repo (install_id used as label for local sources)
+    let repo = sqlx::query_as::<_, models::Repo>(
+        "INSERT INTO repo (id, workspace_id, github_repo, install_id, default_branch) \
+         VALUES (gen_random_uuid(), $1, $2, $3, NULL) \
+         ON CONFLICT DO NOTHING \
+         RETURNING id, workspace_id, github_repo, install_id, default_branch, created_at",
+    )
+    .bind(workspace_id)
+    .bind(&full_name)
+    .bind(&label)
+    .fetch_optional(&pool)
+    .await
+    .map_err(|e| bad_request(&e.to_string()))?;
+
+    let repo = if let Some(r) = repo {
+        r
+    } else {
+        sqlx::query_as::<_, models::Repo>(
+            "SELECT id, workspace_id, github_repo, install_id, default_branch, created_at \
+             FROM repo WHERE workspace_id = $1 AND github_repo = $2",
+        )
+        .bind(workspace_id)
+        .bind(&full_name)
+        .fetch_one(&pool)
+        .await
+        .map_err(internal)?
+    };
+
+    // Link to project
     sqlx::query(
         "INSERT INTO project_repo (project_id, repo_id, is_primary) \
          VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
@@ -280,6 +372,7 @@ pub async fn trigger_analysis(
     Extension(registry): Extension<Arc<ProviderRegistry>>,
     Extension(broadcast): Extension<Arc<WsBroadcast>>,
     Path(id): Path<Uuid>,
+    Query(q): Query<AnalyzeQuery>,
 ) -> Result<Json<AnalyzeTriggerResponse>, (StatusCode, Json<ErrorResponse>)> {
     let repo = sqlx::query_as::<_, models::Repo>(
         "SELECT id, workspace_id, github_repo, install_id, default_branch, created_at \
@@ -292,6 +385,11 @@ pub async fn trigger_analysis(
     .ok_or_else(|| not_found(&format!("Repo {id}")))?;
 
     let pat = repo.install_id.clone().unwrap_or_default();
+
+    let model = q
+        .model
+        .filter(|m| matches!(m.as_str(), "haiku" | "sonnet" | "opus"))
+        .unwrap_or_else(|| cartographer::DEFAULT_MODEL.to_string());
 
     let pool_clone = pool.clone();
     let registry_clone = Arc::clone(&registry);
@@ -322,6 +420,7 @@ pub async fn trigger_analysis(
             &full_name,
             &pat,
             agent_run_id,
+            &model,
         )
         .await;
     });
@@ -387,14 +486,27 @@ pub async fn commit_findings(
     let source_id = if let Some(sid) = body.source_id {
         sid
     } else {
-        // Create or reuse import_source
+        // Determine source type from repo's full_name prefix
+        let full_name: Option<String> =
+            sqlx::query_as::<_, (String,)>("SELECT github_repo FROM repo WHERE id = $1")
+                .bind(repo_id)
+                .fetch_optional(&pool)
+                .await
+                .map_err(internal)?
+                .map(|r| r.0);
+        let source_type = match full_name.as_deref() {
+            Some(s) if s.starts_with("local:") => "local",
+            _ => "github",
+        };
+
         sqlx::query_as::<_, (Uuid,)>(
             "INSERT INTO import_source (id, project_id, source_type, source_config, status) \
-             VALUES (gen_random_uuid(), $1, 'github', $2, 'active') \
+             VALUES (gen_random_uuid(), $1, $2, $3, 'active') \
              ON CONFLICT DO NOTHING \
              RETURNING id",
         )
         .bind(body.project_id)
+        .bind(source_type)
         .bind(serde_json::json!({ "repo_id": repo_id, "agent_run_id": run_id }))
         .fetch_optional(&pool)
         .await
@@ -553,4 +665,59 @@ fn md5_hash(s: &str) -> u64 {
     let mut h = DefaultHasher::new();
     s.hash(&mut h);
     h.finish()
+}
+
+/// Look up workspace_id for a project. If the project does not exist
+/// (e.g. frontend uses IndexedDB and project lives only in browser),
+/// auto-create it under the default workspace so backend features
+/// (repos, cartographer, etc.) can attach to it.
+async fn ensure_project_workspace(
+    pool: &Pool,
+    project_id: Uuid,
+) -> Result<Uuid, (StatusCode, Json<ErrorResponse>)> {
+    if let Some((ws,)) =
+        sqlx::query_as::<_, (Uuid,)>("SELECT workspace_id FROM project WHERE id = $1")
+            .bind(project_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(internal)?
+    {
+        return Ok(ws);
+    }
+
+    // Project not found — find or create a default workspace
+    let workspace_id: Uuid = if let Some((id,)) =
+        sqlx::query_as::<_, (Uuid,)>("SELECT id FROM workspace ORDER BY created_at ASC LIMIT 1")
+            .fetch_optional(pool)
+            .await
+            .map_err(internal)?
+    {
+        id
+    } else {
+        let new_ws = Uuid::new_v4();
+        sqlx::query("INSERT INTO workspace (id, name, slug) VALUES ($1, $2, $3)")
+            .bind(new_ws)
+            .bind("Default Workspace")
+            .bind("default")
+            .execute(pool)
+            .await
+            .map_err(internal)?;
+        new_ws
+    };
+
+    // Insert project with the id supplied by the client (browser UUID)
+    let slug = format!("p-{}", project_id.simple());
+    sqlx::query(
+        "INSERT INTO project (id, workspace_id, name, slug) VALUES ($1, $2, $3, $4) \
+         ON CONFLICT (id) DO NOTHING",
+    )
+    .bind(project_id)
+    .bind(workspace_id)
+    .bind("Imported Project")
+    .bind(&slug)
+    .execute(pool)
+    .await
+    .map_err(internal)?;
+
+    Ok(workspace_id)
 }

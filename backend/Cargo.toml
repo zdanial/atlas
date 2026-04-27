@@ -1,5 +1,5 @@
 [package]
-name = "atlas-server"
+name = "butterfly-server"
 version = "0.1.0"
 edition = "2021"
 license = "AGPL-3.0-or-later"
@@ -23,9 +23,11 @@ dotenvy = "0.15"
 anyhow = "1"
 async-trait = "0.1"
 http = "1"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
 base64 = "0.22"
 thiserror = "1"
+notify = { version = "7", default-features = false, features = ["macos_kqueue"] }
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

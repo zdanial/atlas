@@ -1,4 +1,4 @@
-# Atlas — Recurring Processes & Operational Cadence
+# Butterfly — Recurring Processes & Operational Cadence
 
 Processes that run continuously or on a schedule — not tied to any single milestone but essential to keeping the project healthy.
 

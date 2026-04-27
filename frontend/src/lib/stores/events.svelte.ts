@@ -4,7 +4,7 @@
 
 import type { Node, NodeEdge } from '$lib/storage/adapter';
 
-export interface AtlasEvent {
+export interface ButterflyEvent {
 	id: string;
 	projectId: string;
 	timestamp: Date;
@@ -42,7 +42,7 @@ export const EVENT_TYPES = {
 } as const;
 
 // In-memory event log for Mode A (IndexedDB)
-let events = $state<AtlasEvent[]>([]);
+let events = $state<ButterflyEvent[]>([]);
 let snapshots = $state<Snapshot[]>([]);
 let eventCounter = 0;
 
@@ -56,8 +56,8 @@ export function recordEvent(
 	beforeState: Record<string, unknown> | null,
 	afterState: Record<string, unknown> | null,
 	actor?: string
-): AtlasEvent {
-	const event: AtlasEvent = {
+): ButterflyEvent {
+	const event: ButterflyEvent = {
 		id: crypto.randomUUID(),
 		projectId,
 		timestamp: new Date(),
@@ -74,7 +74,7 @@ export function recordEvent(
 	return event;
 }
 
-export function getEvents(projectId: string, from?: Date, to?: Date): AtlasEvent[] {
+export function getEvents(projectId: string, from?: Date, to?: Date): ButterflyEvent[] {
 	return events.filter((e) => {
 		if (e.projectId !== projectId) return false;
 		if (from && e.timestamp < from) return false;

@@ -1,6 +1,6 @@
-# Atlas — Time as a First-Class Citizen
+# Butterfly — Time as a First-Class Citizen
 
-Every view in Atlas is temporal. A timeline scrubber lets you move forward and backward in time, seeing the exact state of your canvas, roadmap, graph, or any node at any point in history. Time isn't an audit log you dig through — it's a dimension you navigate.
+Every view in Butterfly is temporal. A timeline scrubber lets you move forward and backward in time, seeing the exact state of your canvas, roadmap, graph, or any node at any point in history. Time isn't an audit log you dig through — it's a dimension you navigate.
 
 ---
 

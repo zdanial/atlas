@@ -1,8 +1,8 @@
-# Atlas — Product Spec
+# Butterfly — Product Spec
 
 *A spec-driven planning workspace for founders who think faster than they can ticket.*
 
-**Working name:** Atlas
+**Working name:** Butterfly
 **One-liner:** A spatial thinking canvas that compiles into a structured spec, then into tickets, then into code — with full traceability from manic-CEO brain dump to merged PR.
 **Status:** v0.1 spec, opinionated draft
 
@@ -18,7 +18,7 @@ Three tools exist in your workflow today, and none of them are the right shape:
 
 Nodepad solved a slice of this problem for research thinking — spatial canvas, AI quietly classifying and connecting notes in the background, synthesis on demand. But it stops at insight. It doesn't compile thinking into action.
 
-**Atlas is the missing layer between "I have a hunch" and "here's a PR."** It's where a founder dumps thought, an AI team helps shape it into a coherent product plan, and that plan stays linked all the way down to the diff that implemented it.
+**Butterfly is the missing layer between "I have a hunch" and "here's a PR."** It's where a founder dumps thought, an AI team helps shape it into a coherent product plan, and that plan stays linked all the way down to the diff that implemented it.
 
 The user is *you* (and people like you): someone who is the product manager, the engineering lead, and the CEO of their own work, who generates more direction than any human team could absorb, and who needs a system that can keep up with the rate of re-planning without losing the trail of why anything was decided.
 
@@ -41,7 +41,7 @@ The user is *you* (and people like you): someone who is the product manager, the
 - No first-class concept of *milestone* or *strategic intent* above the epic level. You can fake it, but the tool doesn't help you reason about it.
 - Verification happens against a plan you wrote yesterday. There's no continuous reconciliation of "is this still the right plan."
 
-Atlas keeps the spec-driven loop and the phase primitive. It replaces the task-shaped entry point with a canvas-shaped one and adds a roadmap-shaped layer above.
+Butterfly keeps the spec-driven loop and the phase primitive. It replaces the task-shaped entry point with a canvas-shaped one and adds a roadmap-shaped layer above.
 
 ---
 
@@ -61,13 +61,13 @@ Atlas keeps the spec-driven loop and the phase primitive. It replaces the task-s
 - No collaboration with agents beyond classification and synthesis. No "design this with me," no "decompose this into tickets."
 - No codebase awareness. The thinking happens in a vacuum from the actual repo.
 
-Atlas adopts the canvas, the background AI, the typed-notes idea, and the multi-view affordance — and adds a full compilation pipeline underneath.
+Butterfly adopts the canvas, the background AI, the typed-notes idea, and the multi-view affordance — and adds a full compilation pipeline underneath.
 
 ---
 
 ## 4. Core mental model
 
-Atlas has **five layers**. Each is a view of the same underlying graph, and each compiles down into the next:
+Butterfly has **five layers**. Each is a view of the same underlying graph, and each compiles down into the next:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -93,7 +93,7 @@ Atlas has **five layers**. Each is a view of the same underlying graph, and each
 
 **The critical design principle:** these are not separate documents. They are *views at different zoom levels of the same graph*. You can stand at L0 and zoom out to see the L5 thought that started it. You can stand at L5 and drill down to see every PR that came from a synthesis you wrote three months ago.
 
-This is the inversion of your stated requirement: "everything should be viewable at different levels of detail (direct implementation details being the highest level of detail)." In Atlas, **detail is depth, not separate documents.** A milestone is just a node that, when expanded, reveals its child epics, then phases, then tickets, then PRs — all in one continuous tree.
+This is the inversion of your stated requirement: "everything should be viewable at different levels of detail (direct implementation details being the highest level of detail)." In Butterfly, **detail is depth, not separate documents.** A milestone is just a node that, when expanded, reveals its child epics, then phases, then tickets, then PRs — all in one continuous tree.
 
 ---
 
@@ -131,7 +131,7 @@ Above the canvas sits the Intent layer: a small number of long-lived nodes that 
 - An Intent node has: a name, a target outcome (measurable when possible), a deadline or time horizon, and a status (active / paused / achieved / abandoned).
 - Intent nodes are *parents* of canvas notes. Any canvas note can be linked to one or more Intents — the AI suggests these links automatically.
 - The Intent view is roadmap-shaped: a Gantt-ish or swim-lane visualization showing milestones across time, with their child epics underneath.
-- **Re-planning lives here.** When the world changes, you tell Atlas: "Re-derive my next 4 weeks given these new constraints" or "What changes if I drop Milestone X?" The AI proposes a new arrangement of epics under intents, and you accept or edit.
+- **Re-planning lives here.** When the world changes, you tell Butterfly: "Re-derive my next 4 weeks given these new constraints" or "What changes if I drop Milestone X?" The AI proposes a new arrangement of epics under intents, and you accept or edit.
 
 This is the layer Linear and Traycer both lack. It's the answer to "what should I be working on?" rather than "how do I ship what I'm working on?"
 
@@ -163,14 +163,14 @@ Tickets are the smallest unit and the thing you actually hand to a coding agent.
 - Generated from a Phase by the Decomposer agent. A phase typically yields 3–10 tickets.
 - Each ticket has: title, intent (one paragraph), file paths to touch, acceptance criteria, the relevant context bundle (compiled from upstream layers), and a recommended agent (Claude Code / Cursor / Codex / etc).
 - Tickets carry a *prompt payload* — a structured handoff document that any compatible coding agent can consume. This is the AGENTS.md / Traycer-style spec rendered for a specific ticket.
-- Tickets are linkable to GitHub Issues for teams that want issue-tracker continuity, but Atlas tickets are first-class on their own.
+- Tickets are linkable to GitHub Issues for teams that want issue-tracker continuity, but Butterfly tickets are first-class on their own.
 
 ### L0 — Code (the implementation reality)
 
 The bottom layer is reality: the actual diff, on the actual branch, in the actual repo.
 
-- Atlas connects to GitHub. Each ticket can be linked to one or more PRs.
-- When a PR opens with a reference to an Atlas ticket ID in the branch name or PR body, Atlas auto-links it.
+- Butterfly connects to GitHub. Each ticket can be linked to one or more PRs.
+- When a PR opens with a reference to an Butterfly ticket ID in the branch name or PR body, Butterfly auto-links it.
 - PR status (open / merged / closed), CI status, and review status flow back up to the ticket and bubble through phase → epic → milestone status.
 - Once merged, the diff is captured (file paths + summary, not necessarily full content) and becomes the canonical "this is what shipped" record for that ticket. Forever after, you can stand on a milestone, drill down to a ticket, and see exactly which lines changed and why.
 - The Verifier agent runs on PR open and again on merge: does this code match the ticket spec? It posts a comment on the PR with its findings — this is the Traycer verification loop, but pulling context from the full upstream stack rather than just the immediate plan.
@@ -179,7 +179,7 @@ The bottom layer is reality: the actual diff, on the actual branch, in the actua
 
 ## 6. The agent team
 
-Atlas has a small, named team of agents. Each has a single job. Naming them matters because the user should feel they're directing a team, not poking a monolithic chatbot.
+Butterfly has a small, named team of agents. Each has a single job. Naming them matters because the user should feel they're directing a team, not poking a monolithic chatbot.
 
 | Agent | Layer | Job |
 |---|---|---|
@@ -218,7 +218,7 @@ Documentation is generated, not written. The Historian agent maintains:
 - A **README.md** per Epic, exportable and committable to the repo if desired (this is the Traycer AGENTS.md analog).
 - A **why.md** per file in the codebase — given a file path, walk every PR that touched it and surface the ticket → phase → epic → intent chain. Answers "why does this file look like this" with a real audit trail.
 
-Nothing about documentation is manual. If a user is writing docs by hand in Atlas, the tool has failed.
+Nothing about documentation is manual. If a user is writing docs by hand in Butterfly, the tool has failed.
 
 ---
 
@@ -229,16 +229,16 @@ Tighter than Linear's, in specific ways.
 **What ships in v1:**
 
 - **OAuth GitHub app**, installed per repo. Read: PRs, issues, branches, commits, file tree. Write: PR comments, branch creation, optional commit-on-behalf for approved diffs.
-- **Branch convention:** `atlas/<ticket-id>-<slug>`. When a branch matching this pattern is pushed, Atlas auto-links it to the ticket.
-- **PR templating:** when a coding agent opens a PR for an Atlas ticket, the PR body is auto-populated with the ticket spec, the upstream phase context, and a checklist derived from acceptance criteria.
+- **Branch convention:** `butterfly/<ticket-id>-<slug>`. When a branch matching this pattern is pushed, Butterfly auto-links it to the ticket.
+- **PR templating:** when a coding agent opens a PR for an Butterfly ticket, the PR body is auto-populated with the ticket spec, the upstream phase context, and a checklist derived from acceptance criteria.
 - **PR comment integration:** the Reviewer agent posts a structured verification comment on each PR. Findings are categorized and mapped back to ticket acceptance criteria.
 - **Status sync:** PR open / review / merge state flows back into the ticket, phase, epic, and milestone status. Closing a PR without merging marks the ticket as needs-rework with a one-click "re-derive from current spec."
 - **Codebase awareness:** the Architect agent has read access to the file tree and can fetch file contents on demand when planning. This is what lets it produce file-level plans rather than abstract ones.
-- **File → ticket reverse lookup:** in any file in the repo, Atlas can show "this file was touched by these tickets, under these epics, for these intents."
+- **File → ticket reverse lookup:** in any file in the repo, Butterfly can show "this file was touched by these tickets, under these epics, for these intents."
 
 **Deliberately out of v1:**
 
-- Bidirectional Linear/Jira sync. People who want Atlas as a Linear replacement get full functionality; people who want Atlas alongside Linear can wait for v2.
+- Bidirectional Linear/Jira sync. People who want Butterfly as a Linear replacement get full functionality; people who want Butterfly alongside Linear can wait for v2.
 - Self-hosted Git providers. GitHub.com only at first.
 - Auto-merge. The Reviewer can flag a PR as ready, but humans merge.
 
@@ -355,9 +355,9 @@ The reason for this scope is that the *core loop* — brain dump → compile →
 
 ---
 
-## 12. The first three milestones (a worked example, in Atlas's own format)
+## 12. The first three milestones (a worked example, in Butterfly's own format)
 
-Because the spec should eat its own dog food, here's how I'd structure the actual build of Atlas itself, in Atlas's own model:
+Because the spec should eat its own dog food, here's how I'd structure the actual build of Butterfly itself, in Butterfly's own model:
 
 **Milestone M1 — Canvas + Connector (4 weeks)**
 The brain-dump layer works end to end. You can dump notes, they get classified, edges appear, you can switch between canvas / kanban / graph views. No compilation downstream yet. Ship as a standalone "thinking tool" beta.
@@ -368,7 +368,7 @@ The brain-dump layer works end to end. You can dump notes, they get classified, 
 - Epic 1.4: Command palette + keyboard shortcuts
 
 **Milestone M2 — Compilation pipeline (6 weeks)**
-The middle of the stack. Canvas clusters compile into Epics, Epics into Phases, Phases into Tickets. No GitHub yet. You can plan an entire feature in Atlas and export the tickets to clipboard for manual handoff.
+The middle of the stack. Canvas clusters compile into Epics, Epics into Phases, Phases into Tickets. No GitHub yet. You can plan an entire feature in Butterfly and export the tickets to clipboard for manual handoff.
 
 - Epic 2.1: Synthesizer agent + cluster detection
 - Epic 2.2: Epic mini-spec editor + clarification dialogue
@@ -377,7 +377,7 @@ The middle of the stack. Canvas clusters compile into Epics, Epics into Phases, 
 - Epic 2.5: Re-derivation flows (re-sync stale epics, re-plan under new constraints)
 
 **Milestone M3 — Code reality layer (4 weeks)**
-GitHub integration, Reviewer agent, traceability all the way to merged PRs. This is the milestone that makes Atlas actually replace Linear in your workflow.
+GitHub integration, Reviewer agent, traceability all the way to merged PRs. This is the milestone that makes Butterfly actually replace Linear in your workflow.
 
 - Epic 3.1: GitHub OAuth app + repo binding
 - Epic 3.2: Branch convention + PR auto-linking
@@ -394,7 +394,7 @@ After M3 the loop is closed. After M3 we earn the right to think about multiplay
 These are calls I'd want your input on before locking the spec:
 
 1. **Single-tenant local-first vs cloud-first.** I drafted local-first because it matches Nodepad's ethos and it's how you seem to prefer to work, but cloud-first is much simpler to build and ships faster. How much do you care about local-first for v1?
-2. **Agent provider strategy.** Do you want Atlas to use Claude exclusively (simpler, tighter quality control), or be model-agnostic from day one (Nodepad-style, OpenRouter-backed)?
+2. **Agent provider strategy.** Do you want Butterfly to use Claude exclusively (simpler, tighter quality control), or be model-agnostic from day one (Nodepad-style, OpenRouter-backed)?
 3. **The canvas-vs-doc tension.** Some users will want to skip the canvas entirely and write epics directly. I have it as a supported flow but de-emphasized. Should it be a first-class entry point or a hidden one?
 4. **Pricing model.** This shapes architecture more than people think. SaaS subscription? Per-seat? BYO-keys like Nodepad? "Free if you bring your own infra"?
 5. **Mobile.** Not v1, but for v2: read-only mobile companion (view roadmap, approve agent suggestions) or full mobile? The first is 10x cheaper and probably 80% of the value.
@@ -408,7 +408,7 @@ Three reasons, in order of importance:
 
 1. **You will use it every day.** That's reason enough. The best products are often built by founders solving their own daily pain.
 2. **Spec-driven development is real, and the category is wide open.** Traycer is the strongest player, and Traycer has chosen to live inside the IDE. There is no canvas-first, planning-first, founder-first competitor. The shape of that product hasn't been claimed yet.
-3. **The Linear-replacement angle is a Trojan horse.** Atlas looks like a thinking tool, but it ships tickets. It looks like a planning tool, but it tracks PRs. It looks like a Notion competitor, but it talks to coding agents. Each framing opens a different market. The actual product is bigger than any of them.
+3. **The Linear-replacement angle is a Trojan horse.** Butterfly looks like a thinking tool, but it ships tickets. It looks like a planning tool, but it tracks PRs. It looks like a Notion competitor, but it talks to coding agents. Each framing opens a different market. The actual product is bigger than any of them.
 
 ---
 

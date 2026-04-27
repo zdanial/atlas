@@ -22,7 +22,7 @@ Stream L: GitHub OAuth + Repo Binding
 Stream M: Branch + PR Linking
                 [M1 Branch      [M2 PR template  [M3 Status
                  convention:     auto-populate:    sync: PR
-                 atlas/<id>-     ticket spec +     state flows
+                 butterfly/<id>-     ticket spec +     state flows
                  <slug>, auto-   phase context +   up to ticket
                  link on push]   acceptance list]  → phase → epic]
 
@@ -85,13 +85,13 @@ Stream S: External Tool Imports (see 12-project-onboarding.md)
 ## Stream M: Branch Convention + PR Linking
 
 ### M1 — Branch Convention (Week 12)
-- Convention: `atlas/<ticket-id>-<slug>` (multi-repo: `atlas/<project-slug>/<ticket-id>-<slug>`)
+- Convention: `butterfly/<ticket-id>-<slug>` (multi-repo: `butterfly/<project-slug>/<ticket-id>-<slug>`)
 - When a branch matching this pattern is pushed in ANY project repo → auto-link to ticket
 - GitHub webhook: listen for `create` events on branches across all connected repos
 - Parse ticket ID from branch name, update ticket status to "in progress"
 
 ### M2 — PR Template (Week 13)
-- When a PR opens for an Atlas-linked branch → auto-populate PR body
+- When a PR opens for an Butterfly-linked branch → auto-populate PR body
 - Template: ticket spec, upstream phase context, acceptance criteria checklist
 - GitHub webhook: listen for `pull_request.opened` events
 - Update PR body via GitHub API (PATCH /repos/:owner/:repo/pulls/:number)
@@ -183,7 +183,7 @@ Stream S: External Tool Imports (see 12-project-onboarding.md)
 
 ## Stream Q: Export System
 
-Full details in `05-claude-code-integration.md`. Atlas compiles tickets into ready-to-run commands and prompt payloads that you take to Claude Code, Conductor, or any agent tool.
+Full details in `05-claude-code-integration.md`. Butterfly compiles tickets into ready-to-run commands and prompt payloads that you take to Claude Code, Conductor, or any agent tool.
 
 ### Q1 — Prompt Compiler + Single Ticket Export (Week 12)
 - `PromptCompiler` in Rust: walks ticket → phase → epic → intent → canvas notes, bundles context
@@ -219,7 +219,7 @@ Full details in `05-claude-code-integration.md`. Atlas compiles tickets into rea
 
 ### R2 — Agent Model Assignment (Week 13)
 - Per-agent model selector (Forge's ModelSelector pattern)
-- Dropdown: provider + model for each Atlas agent role
+- Dropdown: provider + model for each Butterfly agent role
 - Cost estimates shown inline
 - Persist in `project.settings.agentProviders`
 
@@ -300,7 +300,7 @@ Full details in `12-project-onboarding.md`.
 
 - [ ] GitHub OAuth flow works, repo binds to project
 - [ ] Architect agent reads real repo file tree and contents
-- [ ] `atlas/<id>-<slug>` branches auto-link to tickets
+- [ ] `butterfly/<id>-<slug>` branches auto-link to tickets
 - [ ] PR bodies auto-populate with ticket spec and context
 - [ ] Reviewer agent posts structured findings on PRs
 - [ ] PR merge/close status flows up through all layers
@@ -314,7 +314,7 @@ Full details in `12-project-onboarding.md`.
 - [ ] "Download CLAUDE.md" renders complete ticket context as markdown
 - [ ] Phase batch export produces ordered commands with dependency annotations
 - [ ] Conductor swarm config exports valid JSON with parallelization waves
-- [ ] PR auto-link passively detects branches matching `atlas/<project>/<ticket-id>-*`
+- [ ] PR auto-link passively detects branches matching `butterfly/<project>/<ticket-id>-*`
 - [ ] API keys configurable per provider in settings UI
 - [ ] Per-agent model assignment works (e.g. Connector on Haiku, Architect on Opus)
 - [ ] PR events (open/merge/close) and export events recorded in event log
@@ -328,7 +328,7 @@ Full details in `12-project-onboarding.md`.
 - [ ] Code cleanup complete: no dead code, no unresolved TODOs, deps audited
 - [ ] Data retention/cleanup tasks running correctly
 - [ ] Performance benchmarks meet targets (500 notes < 500ms, scrub < 200ms)
-- [ ] Linear, Jira, Notion imports produce correct Atlas graphs
+- [ ] Linear, Jira, Notion imports produce correct Butterfly graphs
 - [ ] Cross-source deduplication catches overlapping entities
 - [ ] Imported nodes carry source provenance (clickable back to original tool)
 - [ ] Incremental re-sync works for all connected sources

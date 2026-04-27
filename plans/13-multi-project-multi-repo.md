@@ -1,6 +1,6 @@
-# Atlas — Multiple Projects & Multi-Repo Support
+# Butterfly — Multiple Projects & Multi-Repo Support
 
-A single Atlas instance supports many projects, and each project can span multiple repositories. Cross-project thinking is a feature, not a bug.
+A single Butterfly instance supports many projects, and each project can span multiple repositories. Cross-project thinking is a feature, not a bug.
 
 ---
 
@@ -8,7 +8,7 @@ A single Atlas instance supports many projects, and each project can span multip
 
 ```
 Workspace (top-level container)
-├── Project A: "Atlas" (repos: atlas-frontend, atlas-backend)
+├── Project A: "Butterfly" (repos: butterfly-frontend, butterfly-backend)
 │   ├── L5 Canvas notes
 │   ├── L4 Intents
 │   ├── L3 Epics
@@ -19,7 +19,7 @@ Workspace (top-level container)
 ├── Project B: "Marketing Site" (repo: marketing)
 │   └── ...
 │
-├── Project C: "Shared Infra" (repos: atlas-backend, marketing, infra-tools)
+├── Project C: "Shared Infra" (repos: butterfly-backend, marketing, infra-tools)
 │   └── ... (same repo can appear in multiple projects)
 │
 └── Global Pool (notes not assigned to any project — cross-cutting ideas)
@@ -41,7 +41,7 @@ Workspace (top-level container)
 ┌─────────────────────────────────────────┐
 │  ⌘K → "Switch project"                  │
 │                                          │
-│  ● Atlas              3 repos, 142 notes │
+│  ● Butterfly              3 repos, 142 notes │
 │  ○ Marketing Site     1 repo, 23 notes   │
 │  ○ Shared Infra       3 repos, 67 notes  │
 │  ──────────────────────────────────       │
@@ -60,7 +60,7 @@ Workspace (top-level container)
 
 Notes that aren't assigned to a project live in the Global Pool:
 - Capture ideas that don't belong anywhere yet
-- The Synthesizer scans the Global Pool and suggests: "This note might belong in Project Atlas"
+- The Synthesizer scans the Global Pool and suggests: "This note might belong in Project Butterfly"
 - Drag a note from Global Pool to a project canvas to assign it
 - Notes can be explicitly marked as "cross-project" — visible in multiple project canvases
 
@@ -70,11 +70,11 @@ Some views span all projects in a workspace:
 
 **Unified Roadmap:** All Intents from all projects on one timeline. Filter by project. See how projects' milestones overlap and compete for time.
 
-**Cross-Project Graph:** Show edges between nodes in different projects. "This Shared Infra epic blocks this Atlas epic" — visible as a cross-project edge.
+**Cross-Project Graph:** Show edges between nodes in different projects. "This Shared Infra epic blocks this Butterfly epic" — visible as a cross-project edge.
 
 **Cross-Project Search:** ⌘K search finds nodes across all projects (with project badge on each result).
 
-**Cross-Project Synthesis:** The Synthesizer can identify overlap between projects: "These notes in Atlas and these notes in Marketing Site are talking about the same auth system."
+**Cross-Project Synthesis:** The Synthesizer can identify overlap between projects: "These notes in Butterfly and these notes in Marketing Site are talking about the same auth system."
 
 ### Project Settings
 
@@ -87,9 +87,9 @@ Each project has independent settings that override workspace defaults:
     "architect": { "providerId": "anthropic", "modelId": "claude-opus-4-6" }
   },
   // Which repos are linked
-  "repos": ["atlas-frontend", "atlas-backend"],
+  "repos": ["butterfly-frontend", "butterfly-backend"],
   // Primary repo (for branch conventions)
-  "primaryRepo": "atlas-backend",
+  "primaryRepo": "butterfly-backend",
   // Canvas preferences
   "canvas": { "background": "dots", "snapToGrid": true },
   // Notification preferences
@@ -104,10 +104,10 @@ Each project has independent settings that override workspace defaults:
 ### The Problem
 
 Real products aren't one repo. A typical project might have:
-- `atlas-frontend` — SvelteKit app
-- `atlas-backend` — Rust API
-- `atlas-infra` — Terraform/Pulumi IaC
-- `atlas-docs` — documentation site
+- `butterfly-frontend` — SvelteKit app
+- `butterfly-backend` — Rust API
+- `butterfly-infra` — Terraform/Pulumi IaC
+- `butterfly-docs` — documentation site
 - `shared-libs` — shared utilities used by multiple projects
 
 A single Epic ("Add Stripe checkout") might need changes in the frontend, backend, and infra repos. A Phase might produce tickets for different repos. The Architect needs to read all of them.
@@ -117,20 +117,20 @@ A single Epic ("Add Stripe checkout") might need changes in the frontend, backen
 Projects link to repos via the `project_repo` join table (see `04-data-model.md`):
 
 ```
-Project "Atlas" ──┬── atlas-frontend  (primary: false)
-                  ├── atlas-backend   (primary: true)
-                  └── atlas-infra     (primary: false)
+Project "Butterfly" ──┬── butterfly-frontend  (primary: false)
+                  ├── butterfly-backend   (primary: true)
+                  └── butterfly-infra     (primary: false)
 
 Project "Marketing" ── marketing      (primary: true)
 
-Project "Shared Infra" ──┬── atlas-backend   (shared with Atlas)
+Project "Shared Infra" ──┬── butterfly-backend   (shared with Butterfly)
                          ├── marketing       (shared with Marketing)
                          └── infra-tools     (unique to this project)
 ```
 
 Key rules:
 - A repo can belong to multiple projects (shared repos are first-class)
-- Each project has one **primary repo** — used for branch naming convention (`atlas/<ticket-id>-<slug>`)
+- Each project has one **primary repo** — used for branch naming convention (`butterfly/<ticket-id>-<slug>`)
 - Non-primary repos are still fully accessible to the Architect agent
 
 ### Repo-Scoped Tickets
@@ -140,21 +140,21 @@ When the Decomposer generates tickets from a Phase, each ticket is scoped to a s
 ```
 Phase: "Add Stripe webhook handler"
 ├── Ticket T-42: "Add webhook endpoint"
-│   └── repo: atlas-backend
+│   └── repo: butterfly-backend
 │       └── files: src/routes/payments.rs, src/webhooks/stripe.rs
 │
 ├── Ticket T-43: "Add payment status UI"
-│   └── repo: atlas-frontend
+│   └── repo: butterfly-frontend
 │       └── files: src/routes/payments/+page.svelte, src/lib/components/PaymentStatus.svelte
 │
 └── Ticket T-44: "Add Stripe webhook secret to secrets manager"
-    └── repo: atlas-infra
+    └── repo: butterfly-infra
         └── files: modules/secrets/main.tf
 ```
 
 The ticket's `payload.repoId` field determines:
 - Which repo the Architect reads when planning file-level changes
-- Which repo the exported command `cd`s into (e.g., `cd ~/repos/atlas-backend && claude --print "..."`)
+- Which repo the exported command `cd`s into (e.g., `cd ~/repos/butterfly-backend && claude --print "..."`)
 - Which repo's branch naming convention to use
 - Where the PR auto-link looks for matching branches
 
@@ -203,7 +203,7 @@ These show up in the Graph view as cross-repo edges (styled differently, e.g. da
 The "File → ticket reverse lookup" feature works across all repos in a project:
 
 ```
-"Show me everything that touched src/routes/payments.rs in atlas-backend"
+"Show me everything that touched src/routes/payments.rs in butterfly-backend"
 → Tickets T-42, T-78, T-103
 → Epics: "Stripe Integration", "Payment Refunds"
 → Intents: "Launch Payments v1", "Reduce Churn"
@@ -211,9 +211,9 @@ The "File → ticket reverse lookup" feature works across all repos in a project
 
 ```
 "Show me everything that touched the payments module across ALL repos"
-→ atlas-backend: src/routes/payments.rs, src/webhooks/stripe.rs
-→ atlas-frontend: src/routes/payments/+page.svelte
-→ atlas-infra: modules/secrets/main.tf (Stripe webhook secret)
+→ butterfly-backend: src/routes/payments.rs, src/webhooks/stripe.rs
+→ butterfly-frontend: src/routes/payments/+page.svelte
+→ butterfly-infra: modules/secrets/main.tf (Stripe webhook secret)
 → All linked to the same Epic chain
 ```
 
@@ -222,7 +222,7 @@ The "File → ticket reverse lookup" feature works across all repos in a project
 The `why.md` generator (Historian agent) works per-repo but can cross-reference:
 
 ```markdown
-<!-- atlas-backend/src/routes/payments.rs -->
+<!-- butterfly-backend/src/routes/payments.rs -->
 # Why does this file look like this?
 
 ## PR #142 — Add Stripe webhook endpoint (2026-03-15)
@@ -230,29 +230,29 @@ The `why.md` generator (Historian agent) works per-repo but can cross-reference:
 - Phase: "Add Stripe webhook handler"
 - Epic: "Stripe Integration"
 - Intent: "Launch Payments v1"
-- Also see: atlas-frontend PR #87 (payment status UI) and atlas-infra PR #23 (secrets)
+- Also see: butterfly-frontend PR #87 (payment status UI) and butterfly-infra PR #23 (secrets)
 ```
 
 ---
 
 ## Multi-Repo Export
 
-When exporting a Phase with tickets across multiple repos, Atlas generates repo-aware commands and Conductor configs:
+When exporting a Phase with tickets across multiple repos, Butterfly generates repo-aware commands and Conductor configs:
 
 ```
 Phase: "Add Stripe webhook handler" — Export for Conductor
 
 {
   "wave1": [
-    { "id": "T-44", "repo": "atlas-infra", "cd": "~/repos/atlas-infra",
+    { "id": "T-44", "repo": "butterfly-infra", "cd": "~/repos/butterfly-infra",
       "prompt": "...Provision Stripe webhook secret..." }
   ],
   "wave2": [
-    { "id": "T-42", "repo": "atlas-backend", "cd": "~/repos/atlas-backend",
+    { "id": "T-42", "repo": "butterfly-backend", "cd": "~/repos/butterfly-backend",
       "prompt": "...Add webhook endpoint...\n\nNote: T-44 (infra) provisions the secret." }
   ],
   "wave3": [
-    { "id": "T-43", "repo": "atlas-frontend", "cd": "~/repos/atlas-frontend",
+    { "id": "T-43", "repo": "butterfly-frontend", "cd": "~/repos/butterfly-frontend",
       "prompt": "...Payment status UI...\n\nNote: Backend endpoint at GET /api/payments/status" }
   ]
 }
@@ -270,15 +270,15 @@ Dependency ordering is automatic: the Decomposer agent marks cross-repo ticket d
 ┌─────────────────────────────────────────┐
 │  New Project                             │
 │                                          │
-│  Name: [Atlas_________________]          │
+│  Name: [Butterfly_________________]          │
 │  Description: [Planning tool build___]   │
 │  Color: [● blue ▾]                       │
 │                                          │
 │  Repositories:                           │
 │  ┌───────────────────────────────────┐   │
-│  │ ✓ atlas-frontend    ○ primary     │   │
-│  │ ✓ atlas-backend     ● primary     │   │
-│  │ ✓ atlas-infra       ○ primary     │   │
+│  │ ✓ butterfly-frontend    ○ primary     │   │
+│  │ ✓ butterfly-backend     ● primary     │   │
+│  │ ✓ butterfly-infra       ○ primary     │   │
 │  │ ○ marketing         (other proj)  │   │
 │  │ + Connect new repo                │   │
 │  └───────────────────────────────────┘   │
@@ -294,9 +294,9 @@ Dependency ordering is automatic: the Decomposer agent marks cross-repo ticket d
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Atlas (project)                                 [Settings]  │
+│  Butterfly (project)                                 [Settings]  │
 │                                                              │
-│  Repos: atlas-frontend • atlas-backend • atlas-infra         │
+│  Repos: butterfly-frontend • butterfly-backend • butterfly-infra         │
 │                                                              │
 │  ┌─────────┬─────────┬──────────┬──────────┐               │
 │  │ 142     │ 7       │ 12       │ 34       │               │
@@ -309,7 +309,7 @@ Dependency ordering is automatic: the Decomposer agent marks cross-repo ticket d
 │  ● Performance Overhaul        █░░░░░░░░░ 10%               │
 │                                                              │
 │  Recent Activity:                                            │
-│  • PR #142 merged in atlas-backend (T-42)    2h ago          │
+│  • PR #142 merged in butterfly-backend (T-42)    2h ago          │
 │  • Epic "Payment Refunds" compiled           5h ago          │
 │  • 3 new notes added to canvas               today          │
 └─────────────────────────────────────────────────────────────┘
@@ -361,7 +361,7 @@ The data model supports multiple projects from day 1, but the UI defaults to a s
 ## Edge Cases
 
 ### Shared Repos
-A repo belonging to multiple projects: PRs auto-link to the correct project based on the branch naming convention (`atlas/<project-slug>/<ticket-id>-<slug>`). If ambiguous, Atlas asks.
+A repo belonging to multiple projects: PRs auto-link to the correct project based on the branch naming convention (`butterfly/<project-slug>/<ticket-id>-<slug>`). If ambiguous, Butterfly asks.
 
 ### Repo Removal
 Removing a repo from a project doesn't delete nodes — it disconnects. Tickets scoped to that repo get a "repo disconnected" warning. PRs remain linked as historical artifacts.

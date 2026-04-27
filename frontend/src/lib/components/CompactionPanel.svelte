@@ -1,8 +1,10 @@
 <script lang="ts">
+	import { onMount, onDestroy } from 'svelte';
 	import type { Node, NodeEdge } from '$lib/storage/adapter';
 	import { getNodeTypeConfig, extractBodyText } from '$lib/node-types';
-	import { compact } from '$lib/agents/compactor';
+	import { compact, compactBranch } from '$lib/agents/compactor';
 	import { getGlobalContext } from '$lib/stores/globalContext.svelte';
+	import { onDemoAction } from '$lib/demo/actions';
 
 	interface Props {
 		nodes: Node[];
@@ -20,12 +22,35 @@
 
 	let { nodes, edges, selectedIds, onCompact, onClose }: Props = $props();
 
+	type CompactMode = 'flat' | 'branch';
+	let mode = $state<CompactMode>('flat');
 	let compacting = $state(false);
 	let compactError = $state('');
 	let preview = $state<{ title: string; body: string; tags: string[] } | null>(null);
 	let archiveSources = $state(false);
 	let manualSelection = $state<Set<string>>(new Set(selectedIds ?? []));
 	let expandedGroup = $state<string | null>(null);
+	let branchRootId = $state<string | null>(null);
+
+	let demoCleanups: Array<() => void> = [];
+	onMount(() => {
+		demoCleanups = [
+			onDemoAction('demo:switch-compact-mode', (detail) => {
+				const m = detail?.mode;
+				if (m === 'flat' || m === 'branch') mode = m;
+			}),
+			onDemoAction('demo:select-branch-root', (detail) => {
+				const titleHint = (detail?.title as string | undefined)?.toLowerCase();
+				const target = titleHint
+					? nodes.find((n) => n.title.toLowerCase().includes(titleHint))
+					: null;
+				if (target) branchRootId = target.id;
+			})
+		];
+	});
+	onDestroy(() => {
+		demoCleanups.forEach((fn) => fn());
+	});
 
 	$effect(() => {
 		if (selectedIds && selectedIds.size > 0) {
@@ -113,6 +138,25 @@
 		}
 	}
 
+	async function handleBranchCompact() {
+		if (!branchRootId || compacting) return;
+		compacting = true;
+		preview = null;
+		compactError = '';
+
+		try {
+			const result = await compactBranch(branchRootId, nodes, edges, getGlobalContext());
+			preview = result;
+			// Auto-select all branch nodes for archiving
+			manualSelection = new Set(result.archivedNodeIds);
+		} catch (e) {
+			console.error('Branch compaction failed:', e);
+			compactError = `Branch compaction failed: ${e instanceof Error ? e.message : 'Unknown error'}`;
+		} finally {
+			compacting = false;
+		}
+	}
+
 	function handleConfirm() {
 		if (!preview) return;
 		onCompact({
@@ -123,12 +167,27 @@
 			archiveSources
 		});
 	}
+
+	// Find nodes that have children (potential branch roots)
+	let branchRoots = $derived.by(() => {
+		const parentIds = new Set(edges.map((e) => e.sourceId));
+		return nodes.filter((n) => parentIds.has(n.id));
+	});
 </script>
 
 <div class="compact-panel">
 	<div class="panel-header">
 		<h2>Compact Notes</h2>
 		<button class="close-btn" onclick={onClose}>x</button>
+	</div>
+
+	<div class="mode-toggle">
+		<button class="mode-btn" class:active={mode === 'flat'} onclick={() => (mode = 'flat')}
+			>Flat</button
+		>
+		<button class="mode-btn" class:active={mode === 'branch'} onclick={() => (mode = 'branch')}
+			>Branch</button
+		>
 	</div>
 
 	<div class="panel-body">
@@ -159,6 +218,40 @@
 					>
 				</div>
 			</div>
+		{:else if mode === 'branch'}
+			<!-- Branch selection mode -->
+			<div class="section-label">Select a branch root</div>
+			<div class="node-list">
+				{#each branchRoots as node (node.id)}
+					{@const cfg = getNodeTypeConfig(node.type)}
+					<label class="node-row">
+						<input
+							type="radio"
+							name="branch-root"
+							checked={branchRootId === node.id}
+							onchange={() => (branchRootId = node.id)}
+						/>
+						<span class="node-dot" style:background={cfg.badge}></span>
+						<span class="node-name">{node.title}</span>
+					</label>
+				{/each}
+			</div>
+
+			{#if branchRoots.length === 0}
+				<div class="compact-error">No branch roots found. Create some linked notes first.</div>
+			{/if}
+
+			{#if compactError}
+				<div class="compact-error">{compactError}</div>
+			{/if}
+
+			<button
+				class="compact-btn"
+				disabled={!branchRootId || compacting}
+				onclick={handleBranchCompact}
+			>
+				{compacting ? 'Compacting branch...' : 'Compact Branch'}
+			</button>
 		{:else}
 			<!-- Selection mode -->
 			{#if suggestedGroups.length > 0}
@@ -271,6 +364,34 @@
 	.close-btn:hover {
 		color: #a3a3a3;
 		background: #1a1a1a;
+	}
+
+	.mode-toggle {
+		display: flex;
+		gap: 4px;
+		padding: 8px 12px;
+		border-bottom: 1px solid #1a1a1a;
+	}
+
+	.mode-btn {
+		flex: 1;
+		padding: 4px 8px;
+		background: transparent;
+		border: 1px solid #262626;
+		border-radius: 4px;
+		color: #525252;
+		font-size: 11px;
+		cursor: pointer;
+	}
+
+	.mode-btn:hover {
+		color: #a3a3a3;
+	}
+
+	.mode-btn.active {
+		background: #1a1a1a;
+		color: #d4d4d4;
+		border-color: #525252;
 	}
 
 	.panel-body {

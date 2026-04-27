@@ -1,7 +1,8 @@
 <script lang="ts">
-	import Canvas from '$lib/components/Canvas.svelte';
-	import KanbanView from '$lib/components/KanbanView.svelte';
-	import RoadmapView from '$lib/components/RoadmapView.svelte';
+	import { onMount, onDestroy } from 'svelte';
+	import PlanView from '$lib/components/PlanView.svelte';
+	import DashboardView from '$lib/components/DashboardView.svelte';
+	import PlanningInbox from '$lib/components/PlanningInbox.svelte';
 	import NodeDetailPanel from '$lib/components/NodeDetailPanel.svelte';
 	import PlanningBreadcrumb from '$lib/components/PlanningBreadcrumb.svelte';
 	import TreeExplorer from '$lib/components/TreeExplorer.svelte';
@@ -27,6 +28,29 @@
 		getCreateOptions,
 		isDrillable
 	} from '$lib/stores/planningNav.svelte';
+	import { getInboxCount } from '$lib/stores/inboxStore.svelte';
+	import { onDemoAction } from '$lib/demo/actions';
+
+	// Demo event listeners
+	let demoCleanups: Array<() => void> = [];
+	onMount(() => {
+		demoCleanups = [
+			onDemoAction('demo:drill-feature', () => {
+				// Drill into the first L4 feature node
+				const feature = allNodes.find((n) => n.layer === 4);
+				if (feature) {
+					handleDrillIn(feature.id);
+				}
+			}),
+			onDemoAction('demo:switch-view', (detail) => {
+				const v = detail?.view;
+				if (v === 'plan' || v === 'dashboard') activeView = v;
+			})
+		];
+	});
+	onDestroy(() => {
+		demoCleanups.forEach((fn) => fn());
+	});
 
 	interface Props {
 		projectId: string;
@@ -34,12 +58,12 @@
 
 	let { projectId }: Props = $props();
 
-	type ViewMode = 'canvas' | 'status' | 'roadmap';
-	let view = $state<ViewMode>('canvas');
-	let gridSnap = $state(true);
-	let selectedNodeIds = $state<Set<string>>(new Set());
+	let activeView = $state<'plan' | 'dashboard'>('plan');
 	let detailNodeId = $state<string | null>(null);
 	let selectedTags = $state<Set<string>>(new Set());
+	let showInbox = $state(false);
+
+	let inboxCount = $derived(getInboxCount(projectId));
 	let showCreateMenu = $state(false);
 
 	let detailNode = $derived(detailNodeId ? (getNode(detailNodeId) ?? null) : null);
@@ -162,7 +186,6 @@
 		const node = getNode(id);
 		if (node && isDrillable(node.type)) {
 			drillDown({ id: node.id, type: node.type, title: node.title });
-			selectedNodeIds = new Set();
 			detailNodeId = null;
 			hoverNodeId = null;
 			hoverPosition = null;
@@ -241,24 +264,6 @@
 		showCreateMenu = false;
 	}
 
-	async function handleCreateNote(x: number, y: number) {
-		const node = await createNode({
-			type: createConfig.type,
-			layer: createConfig.layer,
-			projectId,
-			title: `New ${createConfig.label}`,
-			status: 'draft',
-			parentId: parentId,
-			positionX: x,
-			positionY: y
-		});
-		pushOperation({ type: 'create_node', node });
-	}
-
-	async function handleMoveNote(id: string, x: number, y: number) {
-		await updateNode(id, { positionX: x, positionY: y });
-	}
-
 	async function handleUpdateNode(id: string, patch: Partial<Node>) {
 		const existing = getNode(id);
 		const allowed: UpdateNodeInput = {};
@@ -296,7 +301,6 @@
 		if (ops.length > 0) {
 			pushOperation(ops.length === 1 ? ops[0] : { type: 'batch', operations: ops });
 		}
-		selectedNodeIds = new Set();
 	}
 
 	async function handleLinkNode(sourceId: string, targetId: string) {
@@ -318,47 +322,48 @@
 		});
 		pushOperation({ type: 'create_edge', edge });
 	}
-
-	function handleSelectNodes(ids: Set<string>) {
-		selectedNodeIds = ids;
-	}
 </script>
 
 <div class="planning-zone">
 	<div class="planning-toolbar">
 		<span class="zone-title">Planning</span>
+
+		<div class="view-toggle" data-demo="planning-views">
+			<button
+				class="tb-btn"
+				class:active={activeView === 'plan'}
+				onclick={() => (activeView = 'plan')}>Plan</button
+			>
+			<button
+				class="tb-btn"
+				class:active={activeView === 'dashboard'}
+				onclick={() => (activeView = 'dashboard')}>Dashboard</button
+			>
+		</div>
+
 		<span class="tb-sep">|</span>
 
 		<PlanningBreadcrumb />
 
 		<div class="toolbar-spacer"></div>
 
-		{#each [{ key: 'canvas', label: 'canvas' }, { key: 'status', label: 'status' }, { key: 'roadmap', label: 'roadmap' }] as v}
-			<button
-				class="tb-btn"
-				class:active={view === v.key}
-				onclick={() => (view = v.key as ViewMode)}
-			>
-				{v.label}
-			</button>
-		{/each}
-
-		{#if view === 'canvas'}
-			<span class="tb-sep">|</span>
-			<button class="tb-btn" class:active={gridSnap} onclick={() => (gridSnap = !gridSnap)}>
-				Grid snap
-			</button>
-		{/if}
-
 		<span class="tb-sep">|</span>
 
 		{#if createOptions.length <= 1}
-			<button class="tb-btn create-btn" onclick={() => handleCreateItem()}>
+			<button
+				class="tb-btn create-btn"
+				data-demo="planning-create"
+				onclick={() => handleCreateItem()}
+			>
 				+ {createConfig.label}
 			</button>
 		{:else}
 			<div class="create-dropdown">
-				<button class="tb-btn create-btn" onclick={() => handleCreateItem()}>
+				<button
+					class="tb-btn create-btn"
+					data-demo="planning-create"
+					onclick={() => handleCreateItem()}
+				>
 					+ {createConfig.label}
 				</button>
 				<button class="tb-btn create-caret" onclick={() => (showCreateMenu = !showCreateMenu)}>
@@ -375,6 +380,18 @@
 				{/if}
 			</div>
 		{/if}
+
+		<span class="tb-sep">|</span>
+		<button
+			class="tb-btn inbox-btn"
+			class:has-items={inboxCount > 0}
+			onclick={() => (showInbox = !showInbox)}
+		>
+			Inbox
+			{#if inboxCount > 0}
+				<span class="inbox-badge">{inboxCount}</span>
+			{/if}
+		</button>
 
 		{#if allProjectTags.length > 0}
 			<span class="tb-sep">|</span>
@@ -395,53 +412,45 @@
 	</div>
 
 	<div class="planning-content">
-		{#if visibleNodes.length === 0}
-			<div class="empty-state">
-				{#if level === 0}
-					<p>No plans yet. Create your first feature or goal to start planning.</p>
-				{:else}
-					<p>No items here yet. Add a {createConfig.label.toLowerCase()} to get started.</p>
-				{/if}
-				<button class="empty-create" onclick={() => handleCreateItem()}>
-					+ New {createConfig.label}
-				</button>
-			</div>
-		{/if}
+		{#if activeView === 'plan'}
+			{#if visibleNodes.length === 0}
+				<div class="empty-state">
+					{#if level === 0}
+						<p>No plans yet. Create your first feature or goal to start planning.</p>
+					{:else}
+						<p>No items here yet. Add a {createConfig.label.toLowerCase()} to get started.</p>
+					{/if}
+					<button class="empty-create" onclick={() => handleCreateItem()}>
+						+ New {createConfig.label}
+					</button>
+				</div>
+			{/if}
 
-		<div class="planning-main">
-			{#if view === 'canvas'}
-				<Canvas
-					nodes={visibleNodes}
-					edges={projectEdges}
-					{gridSnap}
-					selectedIds={selectedNodeIds}
-					onCreateNote={handleCreateNote}
-					onMoveNote={handleMoveNote}
-					onUpdateNode={handleUpdateNode}
-					onDeleteNodes={handleDeleteNodes}
-					onSelectNodes={handleSelectNodes}
-					onCreateEdge={handleCreateEdge}
-					onOpenNode={handleOpenNode}
-					onHoverNode={handleHoverNode}
-					onLeaveNode={handleLeaveNode}
-				/>
-			{:else if view === 'status'}
-				<KanbanView
-					nodes={visibleNodes}
-					onUpdateNode={handleUpdateNode}
-					onOpenNode={handleOpenNode}
-				/>
-			{:else if view === 'roadmap'}
-				<RoadmapView
+			<div class="planning-main">
+				<PlanView
 					nodes={visibleNodes}
 					edges={projectEdges}
 					{allNodes}
-					onUpdateNode={handleUpdateNode}
 					onOpenNode={handleOpenNode}
+					onUpdateNode={handleUpdateNode}
 					onCreateEdge={handleCreateEdge}
+					onDrillIn={handleDrillIn}
+					onHoverNode={handleHoverNode}
+					onLeaveNode={handleLeaveNode}
 				/>
-			{/if}
-		</div>
+			</div>
+		{:else}
+			<DashboardView
+				{allNodes}
+				edges={projectEdges}
+				onOpenNode={handleOpenNode}
+				onUpdateNode={handleUpdateNode}
+			/>
+		{/if}
+
+		{#if showInbox}
+			<PlanningInbox {projectId} onClose={() => (showInbox = false)} />
+		{/if}
 
 		{#if detailNode}
 			<NodeDetailPanel
@@ -514,6 +523,15 @@
 		z-index: 10;
 	}
 
+	.view-toggle {
+		display: flex;
+		gap: 2px;
+		background: #0a0a0a;
+		border: 1px solid #1f1f1f;
+		border-radius: 5px;
+		padding: 2px;
+	}
+
 	.zone-title {
 		font-size: 12px;
 		font-weight: 600;
@@ -551,6 +569,21 @@
 	.tb-btn.active {
 		background: #1f1f1f;
 		color: #d4d4d4;
+	}
+
+	.inbox-btn.has-items {
+		color: #14b8a6;
+	}
+
+	.inbox-badge {
+		font-size: 10px;
+		font-weight: 700;
+		background: #14b8a6;
+		color: #000;
+		padding: 1px 6px;
+		border-radius: 10px;
+		line-height: 1.4;
+		margin-left: 4px;
 	}
 
 	.create-dropdown {

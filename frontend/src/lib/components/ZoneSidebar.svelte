@@ -8,6 +8,7 @@
 		onZoneChange: (zone: Zone) => void;
 		onSwitchProject: (id: string) => void;
 		onCreateProject: () => void;
+		onDeleteProject?: (id: string) => void;
 		onOpenSettings: () => void;
 	}
 
@@ -18,6 +19,7 @@
 		onZoneChange,
 		onSwitchProject,
 		onCreateProject,
+		onDeleteProject,
 		onOpenSettings
 	}: Props = $props();
 
@@ -50,17 +52,36 @@
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div class="project-dropdown" onclick={(e) => e.stopPropagation()}>
 				{#each projects as project}
-					<button
-						class="project-option"
-						class:active={project.id === currentProjectId}
-						onclick={() => {
-							onSwitchProject(project.id);
-							showProjectMenu = false;
-						}}
-					>
-						<span class="project-dot-sm" style="background: {project.color ?? '#525252'}"></span>
-						{project.name}
-					</button>
+					<div class="project-option-row" class:active={project.id === currentProjectId}>
+						<button
+							class="project-option"
+							class:active={project.id === currentProjectId}
+							onclick={() => {
+								onSwitchProject(project.id);
+								showProjectMenu = false;
+							}}
+						>
+							<span class="project-dot-sm" style="background: {project.color ?? '#525252'}"></span>
+							{project.name}
+						</button>
+						{#if onDeleteProject && projects.length > 1}
+							<button
+								class="project-delete"
+								title="Delete project"
+								onclick={(e) => {
+									e.stopPropagation();
+									if (
+										confirm(`Delete "${project.name}" and all its nodes? This cannot be undone.`)
+									) {
+										onDeleteProject(project.id);
+										showProjectMenu = false;
+									}
+								}}
+							>
+								×
+							</button>
+						{/if}
+					</div>
 				{/each}
 				<button
 					class="project-option new"
@@ -200,6 +221,37 @@
 		border-top: 1px solid #1a1a1a;
 		margin-top: 2px;
 		padding-top: 8px;
+	}
+
+	.project-option-row {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+	}
+
+	.project-option-row .project-option {
+		flex: 1;
+	}
+
+	.project-delete {
+		opacity: 0;
+		background: none;
+		border: none;
+		color: #525252;
+		font-size: 14px;
+		cursor: pointer;
+		padding: 2px 6px;
+		border-radius: 3px;
+		line-height: 1;
+	}
+
+	.project-option-row:hover .project-delete {
+		opacity: 1;
+	}
+
+	.project-delete:hover {
+		background: #2a1212;
+		color: #f87171;
 	}
 
 	.project-dot-sm {

@@ -10,6 +10,7 @@ export interface Node {
 	status: string;
 	positionX: number | null;
 	positionY: number | null;
+	positionLocked: boolean;
 	sortOrder: number | null;
 	createdBy: string | null;
 	createdAt: Date;
