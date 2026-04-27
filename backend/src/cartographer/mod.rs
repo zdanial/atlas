@@ -30,6 +30,7 @@ const CARTOGRAPHER_TOOLS: [&str; 4] = ["Read", "Grep", "Glob", "LS"];
 
 /// Run analysis when the agent_run row has already been created by the caller.
 /// Used by the route handler which pre-generates the ID to return immediately.
+#[allow(clippy::too_many_arguments)]
 pub async fn run_analysis_with_run_id(
     pool: &Pool,
     registry: &Arc<ProviderRegistry>,
@@ -99,6 +100,7 @@ pub async fn run_analysis(
     agent_run_id
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn run_analysis_inner(
     pool: &Pool,
     registry: &Arc<ProviderRegistry>,
@@ -286,10 +288,9 @@ async fn run_analysis_streaming(
 
     let req = CcStreamRequest {
         system_prompt: cartographer_streaming_system_prompt().to_string(),
-        user_prompt: format!(
-            "Scan this repository and produce findings. Plans (if any) live under `plans/`. \
-             Source tree is the rest. Begin."
-        ),
+        user_prompt: "Scan this repository and produce findings. Plans (if any) live under \
+             `plans/`. Source tree is the rest. Begin."
+            .to_string(),
         model: model.to_string(),
         cwd: repo_path.to_string(),
         allowed_tools: CARTOGRAPHER_TOOLS.iter().map(|s| s.to_string()).collect(),

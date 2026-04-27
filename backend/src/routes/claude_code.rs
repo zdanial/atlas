@@ -52,7 +52,7 @@ pub async fn prompt(
 
     let base_url =
         std::env::var("CLAUDE_CODE_URL").unwrap_or_else(|_| "http://localhost:3002".into());
-    let url = format!("{}/prompt", base_url);
+    let url = format!("{base_url}/prompt");
 
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(180))
