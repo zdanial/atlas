@@ -98,9 +98,7 @@ pub async fn prompt(
         tracing::error!("Claude Code container error {status}: {}", body.error);
         return Err((
             StatusCode::BAD_GATEWAY,
-            Json(ErrorResponse {
-                error: body.error,
-            }),
+            Json(ErrorResponse { error: body.error }),
         ));
     }
 

@@ -132,14 +132,8 @@ pub fn router() -> Router<Pool> {
         .route("/api/agent-runs/{id}", get(repos::get_agent_run))
         // File I/O (M7)
         .route("/api/projects/{id}/files", get(files::list_files))
-        .route(
-            "/api/projects/{id}/files/read",
-            post(files::read_file),
-        )
-        .route(
-            "/api/projects/{id}/files/write",
-            post(files::write_file),
-        )
+        .route("/api/projects/{id}/files/read", post(files::read_file))
+        .route("/api/projects/{id}/files/write", post(files::write_file))
         .route(
             "/api/projects/{id}/files/{slug}",
             delete(files::delete_file),

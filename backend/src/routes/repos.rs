@@ -34,8 +34,8 @@ pub struct ConnectRepoBody {
 #[derive(Debug, Deserialize)]
 pub struct ConnectLocalBody {
     pub project_id: Uuid,
-    pub path: String,            // absolute filesystem path
-    pub label: Option<String>,   // optional human-friendly name
+    pub path: String,          // absolute filesystem path
+    pub label: Option<String>, // optional human-friendly name
     pub is_primary: Option<bool>,
 }
 

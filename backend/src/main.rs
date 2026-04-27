@@ -56,12 +56,10 @@ async fn main() -> anyhow::Result<()> {
         .with_state(pool);
 
     // Start file watcher for .butterfly/ data directory
-    let watch_dir = std::env::var("BUTTERFLY_DATA_DIR")
-        .unwrap_or_else(|_| ".butterfly".to_string());
-    let _watcher = watcher::start_file_watcher(
-        std::path::PathBuf::from(watch_dir),
-        broadcast.clone(),
-    );
+    let watch_dir =
+        std::env::var("BUTTERFLY_DATA_DIR").unwrap_or_else(|_| ".butterfly".to_string());
+    let _watcher =
+        watcher::start_file_watcher(std::path::PathBuf::from(watch_dir), broadcast.clone());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3001").await?;
     tracing::info!("Butterfly server listening on :3001");

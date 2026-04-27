@@ -353,7 +353,10 @@ async fn run_analysis_streaming(
                     broadcast_clone.publish(WsEvent::CartographerTool {
                         agent_run_id: run_id_clone.clone(),
                         tool: "claude_exit".into(),
-                        summary: format!("exit {code}: {}", stderr.chars().take(200).collect::<String>()),
+                        summary: format!(
+                            "exit {code}: {}",
+                            stderr.chars().take(200).collect::<String>()
+                        ),
                     });
                 }
             }

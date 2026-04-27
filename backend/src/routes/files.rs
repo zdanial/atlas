@@ -85,10 +85,7 @@ pub async fn list_files(
                 .await
                 .ok()
                 .and_then(|m| m.modified().ok())
-                .map(|t| {
-                    chrono::DateTime::<chrono::Utc>::from(t)
-                        .to_rfc3339()
-                });
+                .map(|t| chrono::DateTime::<chrono::Utc>::from(t).to_rfc3339());
 
             entries.push(FileEntry {
                 name: name.clone(),
