@@ -1,5 +1,8 @@
 pub mod braindump;
+pub mod claude_code;
 pub mod events;
+pub mod files;
+pub mod fs;
 pub mod github;
 pub mod imports;
 pub mod nodes;
@@ -98,6 +101,8 @@ pub fn router() -> Router<Pool> {
         )
         // Brain dump
         .route("/api/brain-dump", post(braindump::brain_dump))
+        // Claude Code proxy
+        .route("/api/claude-code/prompt", post(claude_code::prompt))
         // Event sourcing (WP-15)
         .route("/api/events", post(events::create_event))
         .route("/api/projects/{id}/events", get(events::list_events))
@@ -113,6 +118,7 @@ pub fn router() -> Router<Pool> {
             "/api/repos",
             get(repos::list_repos).post(repos::connect_repo),
         )
+        .route("/api/repos/connect-local", post(repos::connect_local_repo))
         .route("/api/repos/{id}", delete(repos::delete_repo))
         .route("/api/repos/{id}/analyze", post(repos::trigger_analysis))
         .route(
@@ -124,6 +130,17 @@ pub fn router() -> Router<Pool> {
             get(repos::existing_titles),
         )
         .route("/api/agent-runs/{id}", get(repos::get_agent_run))
+        // File I/O (M7)
+        .route("/api/projects/{id}/files", get(files::list_files))
+        .route("/api/projects/{id}/files/read", post(files::read_file))
+        .route("/api/projects/{id}/files/write", post(files::write_file))
+        .route(
+            "/api/projects/{id}/files/{slug}",
+            delete(files::delete_file),
+        )
+        .route("/api/projects/{id}/sync", post(files::sync_files))
+        // Filesystem browse (folder picker)
+        .route("/api/fs/browse", get(fs::browse))
         // Strategist Agent (WP-18)
         .route(
             "/api/projects/{id}/strategist/analyze",

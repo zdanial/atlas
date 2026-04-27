@@ -132,9 +132,11 @@
 
 	function saveRecent(id: string) {
 		try {
-			const recent = JSON.parse(localStorage.getItem('atlas_recent_commands') ?? '[]') as string[];
+			const recent = JSON.parse(
+				localStorage.getItem('butterfly_recent_commands') ?? '[]'
+			) as string[];
 			const updated = [id, ...recent.filter((r) => r !== id)].slice(0, 5);
-			localStorage.setItem('atlas_recent_commands', JSON.stringify(updated));
+			localStorage.setItem('butterfly_recent_commands', JSON.stringify(updated));
 		} catch {
 			// ignore
 		}
@@ -154,7 +156,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="palette-backdrop" onclick={onClose} onkeydown={(e) => e.key === 'Escape' && onClose()}>
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div class="palette" onclick={(e) => e.stopPropagation()}>
+	<div class="palette" data-demo="command-palette" onclick={(e) => e.stopPropagation()}>
 		<div class="palette-input-row">
 			<span class="palette-icon">⌘</span>
 			<input

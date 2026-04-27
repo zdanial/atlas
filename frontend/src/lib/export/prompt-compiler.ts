@@ -1,6 +1,6 @@
 /**
  * Compile a node (ticket, phase, epic, feature, or canvas note) into a
- * ready-to-paste markdown prompt for Claude Code, with an atlas-ref
+ * ready-to-paste markdown prompt for Claude Code, with an butterfly-ref
  * traceability tag at the bottom.
  */
 
@@ -61,7 +61,7 @@ function buildPathString(node: Node, parentChain: Node[]): string {
 	].join(' > ');
 }
 
-function buildAtlasRef(node: Node, parentChain: Node[]): string {
+function buildButterflyRef(node: Node, parentChain: Node[]): string {
 	const path = buildPathString(node, parentChain);
 	const ref = {
 		nodeId: node.id,
@@ -71,11 +71,11 @@ function buildAtlasRef(node: Node, parentChain: Node[]): string {
 	};
 	return [
 		'',
-		'## Atlas Reference',
-		`<!-- atlas-ref: ${JSON.stringify(ref)} -->`,
+		'## Butterfly Reference',
+		`<!-- butterfly-ref: ${JSON.stringify(ref)} -->`,
 		'',
 		'When creating commits or PRs for this work, include this tag in the commit message or PR description:',
-		`atlas-ref: ${node.id}`,
+		`butterfly-ref: ${node.id}`,
 		''
 	].join('\n');
 }
@@ -292,10 +292,10 @@ function compileTicket(
 	// Branch convention
 	const idShort = node.id.slice(0, 8);
 	const slug = slugify(node.title);
-	lines.push('', '## Branch Convention', `atlas/atlas/${idShort}-${slug}`);
+	lines.push('', '## Branch Convention', `butterfly/${idShort}-${slug}`);
 
-	// Atlas ref
-	lines.push(buildAtlasRef(node, parentChain));
+	// Butterfly ref
+	lines.push(buildButterflyRef(node, parentChain));
 
 	return lines.join('\n');
 }
@@ -357,8 +357,8 @@ function compilePhase(
 		}
 	}
 
-	// Atlas ref
-	lines.push(buildAtlasRef(node, parentChain));
+	// Butterfly ref
+	lines.push(buildButterflyRef(node, parentChain));
 
 	return lines.join('\n');
 }
@@ -398,8 +398,8 @@ function compileEpic(
 		}
 	}
 
-	// Atlas ref
-	lines.push(buildAtlasRef(node, parentChain));
+	// Butterfly ref
+	lines.push(buildButterflyRef(node, parentChain));
 
 	return lines.join('\n');
 }
@@ -438,8 +438,8 @@ function compileFeature(
 		}
 	}
 
-	// Atlas ref
-	lines.push(buildAtlasRef(node, parentChain));
+	// Butterfly ref
+	lines.push(buildButterflyRef(node, parentChain));
 
 	return lines.join('\n');
 }
@@ -482,7 +482,7 @@ function compileGeneric(
 		}
 	}
 
-	lines.push(buildAtlasRef(node, parentChain));
+	lines.push(buildButterflyRef(node, parentChain));
 
 	return lines.join('\n');
 }
@@ -491,7 +491,7 @@ function compileGeneric(
 
 /**
  * Compile a planning node into a markdown prompt ready to paste into Claude Code.
- * Includes full upstream context and an atlas-ref traceability tag.
+ * Includes full upstream context and an butterfly-ref traceability tag.
  */
 export function compilePrompt(node: Node, allNodes: Node[], edges: NodeEdge[]): string {
 	const nodeMap = new Map(allNodes.map((n) => [n.id, n]));

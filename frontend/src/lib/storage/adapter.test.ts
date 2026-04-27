@@ -21,6 +21,7 @@ class MockAdapter implements StorageAdapter {
 			status: input.status ?? 'active',
 			positionX: input.positionX ?? null,
 			positionY: input.positionY ?? null,
+			positionLocked: false,
 			sortOrder: input.sortOrder ?? null,
 			createdBy: null,
 			createdAt: new Date(),

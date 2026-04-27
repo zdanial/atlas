@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { Node } from '$lib/storage/adapter';
 	import { getNodeTypeConfig, extractBodyText, NODE_TYPES } from '$lib/node-types';
-	import NoteEditor from './NoteEditor.svelte';
 
 	interface Props {
 		node: Node;
@@ -29,11 +28,8 @@
 		onLeave
 	}: Props = $props();
 
-	let isEditing = $state(false);
-	let isEditingTitle = $state(false);
 	let showTypeSelector = $state(false);
 	let isHovered = $state(false);
-	let titleInputEl = $state<HTMLInputElement>();
 
 	let colors = $derived(getNodeTypeConfig(node.type));
 	let bodyPreview = $derived(extractBodyText(node.body));
@@ -46,45 +42,7 @@
 
 	function handleDblClick(e: MouseEvent) {
 		e.stopPropagation();
-		if (onOpen) {
-			onOpen(node.id);
-		} else {
-			isEditing = true;
-		}
-	}
-
-	function handleTitleDblClick(e: MouseEvent) {
-		e.stopPropagation();
-		isEditingTitle = true;
-		requestAnimationFrame(() => titleInputEl?.select());
-	}
-
-	function handleTitleBlur() {
-		isEditingTitle = false;
-	}
-
-	function handleTitleKeydown(e: KeyboardEvent) {
-		if (e.key === 'Enter') {
-			e.preventDefault();
-			const input = e.target as HTMLInputElement;
-			onUpdateNode?.(node.id, { title: input.value });
-			isEditingTitle = false;
-		} else if (e.key === 'Escape') {
-			isEditingTitle = false;
-		}
-	}
-
-	function handleTitleInput(e: Event) {
-		const input = e.target as HTMLInputElement;
-		onUpdateNode?.(node.id, { title: input.value });
-	}
-
-	function handleEditorSave(body: Record<string, unknown>) {
-		onUpdateNode?.(node.id, { body });
-	}
-
-	function handleEditorBlur() {
-		isEditing = false;
+		onOpen?.(node.id);
 	}
 
 	function handleTypeSelect(type: string) {
@@ -98,12 +56,10 @@
 	}
 
 	function handlePointerDown(e: PointerEvent) {
-		if (isEditing || isEditingTitle) return;
 		onDragStart(e);
 	}
 
 	function handleClick(e: MouseEvent) {
-		if (isEditing || isEditingTitle) return;
 		onClick?.(e);
 	}
 
@@ -118,7 +74,6 @@
 <div
 	class="note-card"
 	class:dragging={isDragging}
-	class:editing={isEditing}
 	class:selected={isSelected}
 	role="button"
 	tabindex="0"
@@ -183,23 +138,9 @@
 		{/if}
 	</div>
 
-	{#if isEditingTitle}
-		<input
-			bind:this={titleInputEl}
-			class="note-title-input"
-			value={node.title}
-			onblur={handleTitleBlur}
-			onkeydown={handleTitleKeydown}
-			oninput={handleTitleInput}
-		/>
-	{:else}
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<h3 class="note-title" ondblclick={handleTitleDblClick}>{node.title}</h3>
-	{/if}
+	<h3 class="note-title">{node.title}</h3>
 
-	{#if isEditing}
-		<NoteEditor content={node.body} onSave={handleEditorSave} onBlur={handleEditorBlur} />
-	{:else if bodyPreview}
+	{#if bodyPreview}
 		<p class="note-body">{bodyPreview}</p>
 	{/if}
 </div>
@@ -216,13 +157,6 @@
 		user-select: none;
 		transition: box-shadow 0.15s ease;
 		touch-action: none;
-	}
-
-	.note-card.editing {
-		cursor: auto;
-		user-select: text;
-		width: 280px;
-		z-index: 500;
 	}
 
 	.note-card:hover {
@@ -386,20 +320,6 @@
 		font-weight: 600;
 		color: #e5e5e5;
 		margin: 0;
-		line-height: 1.3;
-	}
-
-	.note-title-input {
-		font-size: 13px;
-		font-weight: 600;
-		color: #e5e5e5;
-		background: transparent;
-		border: none;
-		border-bottom: 1px solid #525252;
-		outline: none;
-		width: 100%;
-		margin: 0;
-		padding: 0 0 2px;
 		line-height: 1.3;
 	}
 

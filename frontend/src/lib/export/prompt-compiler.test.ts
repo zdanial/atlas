@@ -12,6 +12,7 @@ function makeNode(overrides: Partial<Node> & { id: string; type: string; title: 
 		status: 'draft',
 		positionX: null,
 		positionY: null,
+		positionLocked: false,
 		sortOrder: null,
 		createdBy: null,
 		createdAt: new Date(),
@@ -98,9 +99,9 @@ describe('compilePrompt', () => {
 		expect(result).toContain('## Sibling Tickets');
 		expect(result).toContain('Add logout route (active)');
 		expect(result).toContain('## Branch Convention');
-		expect(result).toContain('atlas/atlas/');
-		expect(result).toContain('## Atlas Reference');
-		expect(result).toContain('atlas-ref: t1');
+		expect(result).toContain('butterfly/');
+		expect(result).toContain('## Butterfly Reference');
+		expect(result).toContain('butterfly-ref: t1');
 	});
 
 	it('ticket includes dependencies', () => {
@@ -285,11 +286,11 @@ describe('compilePrompt', () => {
 
 		expect(result).toContain('# Note: Random thought');
 		expect(result).toContain('Some idea');
-		expect(result).toContain('## Atlas Reference');
+		expect(result).toContain('## Butterfly Reference');
 		expect(result).not.toContain('## Upstream Context');
 	});
 
-	it('atlas ref block contains valid JSON', () => {
+	it('butterfly ref block contains valid JSON', () => {
 		const ticket = makeNode({
 			id: 'abc-123',
 			type: 'ticket',
@@ -297,7 +298,7 @@ describe('compilePrompt', () => {
 		});
 
 		const result = compilePrompt(ticket, [ticket], []);
-		const match = result.match(/<!-- atlas-ref: ({.*?}) -->/);
+		const match = result.match(/<!-- butterfly-ref: ({.*?}) -->/);
 
 		expect(match).not.toBeNull();
 		const parsed = JSON.parse(match![1]);
@@ -318,7 +319,7 @@ describe('compilePrompt', () => {
 		const result = compilePrompt(ticket, [ticket], []);
 
 		expect(result).toContain('# Ticket: Empty ticket');
-		expect(result).toContain('## Atlas Reference');
+		expect(result).toContain('## Butterfly Reference');
 	});
 
 	it('handles missing parent gracefully', () => {
@@ -333,6 +334,6 @@ describe('compilePrompt', () => {
 
 		expect(result).toContain('# Ticket: Orphan ticket');
 		expect(result).not.toContain('## Upstream Context');
-		expect(result).toContain('## Atlas Reference');
+		expect(result).toContain('## Butterfly Reference');
 	});
 });

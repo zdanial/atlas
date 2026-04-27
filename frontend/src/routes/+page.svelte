@@ -12,15 +12,20 @@
 	import { createStorage } from '$lib/storage';
 	import type { StorageAdapter } from '$lib/storage/adapter';
 	import { startConnector, stopConnector } from '$lib/agents/connector.svelte';
-	import {
-		loadGlobalContext,
-		getGlobalContext,
-		setGlobalContext
-	} from '$lib/stores/globalContext.svelte';
+	import { loadGlobalContext } from '$lib/stores/globalContext.svelte';
+	import GlobalContextPanel from '$lib/components/GlobalContextPanel.svelte';
 	import { seedDemo } from '$lib/seed-demo';
 	import { initStore, getProjectNodes, setProject, loadNodes } from '$lib/stores/nodes.svelte';
 	import { undo, redo } from '$lib/stores/history.svelte';
+	import { initInboxStore } from '$lib/stores/inboxStore.svelte';
 	import { getActiveZone, setActiveZone, type Zone } from '$lib/stores/zone.svelte';
+	import DemoOverlay from '$lib/components/DemoOverlay.svelte';
+	import { isDemoActive, startDemo } from '$lib/demo/store.svelte';
+	import { onDemoAction } from '$lib/demo/actions';
+	import { loadProjects, saveProjects, upsertProject } from '$lib/stores/projects';
+	import { logInfo, logSuccess, logError, logWarn } from '$lib/stores/log.svelte';
+	import { startWs, stopWs, pipeWsToActivityLog } from '$lib/services/ws';
+	import { syncBackendNodesToLocal } from '$lib/services/backend-sync';
 
 	let projectId = $state<string>('');
 	let ready = $state(false);
@@ -30,7 +35,6 @@
 	let showConnectRepo = $state(false);
 	let showAnalysis = $state(false);
 	let showContext = $state(false);
-	let contextDraft = $state('');
 	let connectedRepo = $state<{ id: string; full_name: string } | null>(null);
 	let pendingAgentRunId = $state<string | null>(null);
 	let workspaceId = $state<string>('');
@@ -56,47 +60,82 @@
 		const storage = createStorage();
 
 		// Clear stale data and reseed when seed version changes
-		const SEED_VERSION = '4';
-		const storedVersion = localStorage.getItem('atlas_seed_version');
+		const SEED_VERSION = '6';
+		const storedVersion = localStorage.getItem('butterfly_seed_version');
 		if (storedVersion !== SEED_VERSION) {
 			const staleNodes = await storage.listNodes({});
 			for (const node of staleNodes) {
 				await storage.deleteNode(node.id);
 			}
-			localStorage.setItem('atlas_seed_version', SEED_VERSION);
+			localStorage.setItem('butterfly_seed_version', SEED_VERSION);
 		}
 
+		// Merge persisted project list with any project IDs found in nodes.
+		// Persisted entries keep their custom names (e.g. "atlas" for an imported repo).
+		const persisted = loadProjects();
+		const persistedById = new Map(persisted.map((p) => [p.id, p]));
+
 		const allNodes = await storage.listNodes({});
-		const projectMap = new Map<string, string>();
-		for (const node of allNodes) {
-			if (!projectMap.has(node.projectId)) {
-				projectMap.set(node.projectId, node.projectId);
+		const nodeProjectIds = new Set<string>();
+		for (const node of allNodes) nodeProjectIds.add(node.projectId);
+
+		// Add any node-derived projects that aren't persisted yet
+		for (const id of nodeProjectIds) {
+			if (!persistedById.has(id)) {
+				const idx = persistedById.size;
+				persistedById.set(id, {
+					id,
+					name: idx === 0 ? 'TaskFlow' : `Project ${idx + 1}`,
+					color: PROJECT_COLORS[idx % PROJECT_COLORS.length]
+				});
 			}
 		}
 
-		if (projectMap.size > 0) {
-			projects = Array.from(projectMap.keys()).map((id, i) => ({
-				id,
-				name: i === 0 ? 'Atlas v1 Launch' : `Project ${i + 1}`,
-				color: PROJECT_COLORS[i % PROJECT_COLORS.length]
-			}));
-			projectId = projects[0].id;
-		} else {
-			projectId = crypto.randomUUID();
-			projects = [{ id: projectId, name: 'Atlas v1 Launch', color: PROJECT_COLORS[0] }];
-			await seedDemo(storage, projectId);
+		if (persistedById.size === 0) {
+			// First-run: seed demo
+			const newId = crypto.randomUUID();
+			persistedById.set(newId, { id: newId, name: 'TaskFlow', color: PROJECT_COLORS[0] });
+			await seedDemo(storage, newId);
 		}
 
+		projects = Array.from(persistedById.values());
+		saveProjects(projects);
+		projectId = projects[0].id;
+
 		await initStore(storage, projectId);
+		await initInboxStore();
 		storageRef = storage;
 		loadGlobalContext(projectId);
-		contextDraft = getGlobalContext();
 		startConnector(storage, projectId);
+
+		// Open WebSocket + pipe backend events into the activity log
+		pipeWsToActivityLog();
+		startWs();
+
 		ready = true;
+	});
+
+	let demoCleanups: Array<() => void> = [];
+
+	onMount(() => {
+		demoCleanups.push(
+			onDemoAction('demo:open-context-panel', () => {
+				showCommandPalette = false;
+				showContext = true;
+			}),
+			onDemoAction('demo:open-command-palette', () => {
+				showCommandPalette = true;
+			}),
+			onDemoAction('demo:close-command-palette', () => {
+				showCommandPalette = false;
+			})
+		);
 	});
 
 	onDestroy(() => {
 		stopConnector();
+		stopWs();
+		demoCleanups.forEach((fn) => fn());
 	});
 
 	// Global keyboard shortcuts
@@ -145,11 +184,58 @@
 	function handleCreateProject() {
 		const newId = crypto.randomUUID();
 		const idx = projects.length;
-		projects = [
-			...projects,
-			{ id: newId, name: `Project ${idx + 1}`, color: PROJECT_COLORS[idx % PROJECT_COLORS.length] }
-		];
+		const color = PROJECT_COLORS[idx % PROJECT_COLORS.length];
+		const entry = { id: newId, name: `Project ${idx + 1}`, color };
+		projects = [...projects, entry];
+		upsertProject(entry);
 		handleSwitchProject(newId);
+	}
+
+	function addProject(id: string, name: string) {
+		if (projects.some((p) => p.id === id)) return;
+		const idx = projects.length;
+		const color = PROJECT_COLORS[idx % PROJECT_COLORS.length];
+		const entry = { id, name, color };
+		projects = [...projects, entry];
+		upsertProject(entry);
+	}
+
+	async function handleDeleteProject(id: string) {
+		if (!storageRef) return;
+		try {
+			// Wipe all nodes for the project from local IndexedDB
+			const stale = await storageRef.listNodes({ projectId: id });
+			for (const n of stale) {
+				await storageRef.deleteNode(n.id);
+			}
+			// Best-effort: tell backend too (cascades repo links / postgres nodes)
+			fetch(`/api/projects/${id}`, { method: 'DELETE' }).catch(() => {});
+
+			// Remove from local list + persist
+			const remaining = projects.filter((p) => p.id !== id);
+			projects = remaining;
+			saveProjects(remaining);
+
+			// Switch to another project if we deleted the active one
+			if (projectId === id) {
+				const next = remaining[0]?.id;
+				if (next) {
+					await handleSwitchProject(next);
+				}
+			}
+			logSuccess('project', `Deleted project ${id.slice(0, 8)}`);
+		} catch (e) {
+			logError('project', 'Delete failed', String(e));
+		}
+	}
+
+	async function handleRescanRepo() {
+		if (!connectedRepo) return;
+		const ok = confirm(
+			`Re-run cartographer on ${connectedRepo.full_name}?\n\nThis will start a new analysis. Existing findings on the canvas are kept; new ones are appended.`
+		);
+		if (!ok) return;
+		await handleAnalyze();
 	}
 
 	// Command palette actions
@@ -212,12 +298,21 @@
 			onZoneChange={setActiveZone}
 			onSwitchProject={handleSwitchProject}
 			onCreateProject={handleCreateProject}
+			onDeleteProject={handleDeleteProject}
 			onOpenSettings={() => (showSettings = true)}
 		/>
 
 		<main class="zone-content">
 			<!-- Zone top-right controls -->
 			<div class="global-controls">
+				<button
+					class="gc-btn demo-toggle"
+					class:active={isDemoActive()}
+					onclick={startDemo}
+					title="Start demo walkthrough"
+				>
+					Demo
+				</button>
 				<button
 					class="gc-btn"
 					onclick={() => (showCommandPalette = true)}
@@ -228,13 +323,11 @@
 				<button
 					class="gc-btn"
 					class:active={showContext}
-					onclick={() => {
-						showContext = !showContext;
-						contextDraft = getGlobalContext();
-					}}
+					data-demo="context-btn"
+					onclick={() => (showContext = !showContext)}
 					title="Global Context"
 				>
-					⊕
+					Context
 				</button>
 				<button
 					class="gc-btn"
@@ -246,8 +339,18 @@
 				</button>
 
 				{#if connectedRepo}
-					<span class="repo-name">{connectedRepo.full_name}</span>
-					<button class="gc-btn repo" onclick={handleAnalyze}>Analyze</button>
+					<span class="repo-name" title={connectedRepo.full_name}>
+						{connectedRepo.full_name.startsWith('local:')
+							? connectedRepo.full_name.slice(6)
+							: connectedRepo.full_name}
+					</span>
+					<button
+						class="gc-btn repo"
+						onclick={handleRescanRepo}
+						title="Re-run cartographer on this repo"
+					>
+						Re-scan
+					</button>
 				{:else}
 					<button class="gc-btn" onclick={() => (showConnectRepo = true)}>Connect Repo</button>
 				{/if}
@@ -284,9 +387,15 @@
 	{#if showConnectRepo}
 		<ConnectRepoDialog
 			{projectId}
-			onConnected={(repo) => {
+			onConnected={async (repo, newProject) => {
 				connectedRepo = repo;
 				showConnectRepo = false;
+				logSuccess('cartographer', `Connected ${repo.full_name}`);
+				if (newProject) {
+					addProject(newProject.id, newProject.name);
+					await handleSwitchProject(newProject.id);
+				}
+				await handleAnalyze();
 			}}
 			onClose={() => (showConnectRepo = false)}
 		/>
@@ -300,6 +409,18 @@
 			onImported={async () => {
 				showAnalysis = false;
 				pendingAgentRunId = null;
+				if (storageRef) {
+					try {
+						const result = await syncBackendNodesToLocal(storageRef, projectId);
+						logSuccess(
+							'cartographer',
+							`Imported ${result.added} nodes`,
+							result.skipped > 0 ? `${result.skipped} duplicates skipped` : undefined
+						);
+					} catch (e) {
+						logError('cartographer', 'Sync failed', String(e));
+					}
+				}
 				await loadNodes({ projectId });
 			}}
 			onClose={() => {
@@ -309,26 +430,10 @@
 		/>
 	{/if}
 
+	<DemoOverlay />
+
 	{#if showContext}
-		<div class="context-panel">
-			<div class="context-header">
-				<span class="context-title">Global Context</span>
-				<span class="context-hint">Passed to every AI call as background</span>
-				<button
-					class="context-close"
-					onclick={() => {
-						setGlobalContext(contextDraft);
-						showContext = false;
-					}}>Save & close</button
-				>
-			</div>
-			<textarea
-				class="context-body"
-				placeholder="Describe your project, goals, constraints, key decisions... This is sent as background context to every AI classification and synthesis call."
-				bind:value={contextDraft}
-				onblur={() => setGlobalContext(contextDraft)}
-			></textarea>
-		</div>
+		<GlobalContextPanel onClose={() => (showContext = false)} />
 	{/if}
 </div>
 
@@ -387,6 +492,17 @@
 		color: #d4d4d4;
 	}
 
+	.gc-btn.demo-toggle {
+		color: #6366f1;
+		border: 1px solid #3730a3;
+		border-radius: 4px;
+	}
+
+	.gc-btn.demo-toggle:hover {
+		background: #1e1b4b;
+		color: #818cf8;
+	}
+
 	.gc-btn.repo {
 		color: #34d399;
 	}
@@ -394,71 +510,5 @@
 	.repo-name {
 		font-size: 11px;
 		color: #404040;
-	}
-
-	.context-panel {
-		position: fixed;
-		right: 0;
-		top: 40px;
-		bottom: 0;
-		width: 320px;
-		background: #0f0f0f;
-		border-left: 1px solid #1f1f1f;
-		display: flex;
-		flex-direction: column;
-		z-index: 4000;
-	}
-
-	.context-header {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 10px 14px;
-		border-bottom: 1px solid #1a1a1a;
-		flex-shrink: 0;
-	}
-
-	.context-title {
-		font-size: 11px;
-		font-weight: 600;
-		color: #a3a3a3;
-	}
-
-	.context-hint {
-		font-size: 10px;
-		color: #404040;
-		flex: 1;
-	}
-
-	.context-close {
-		background: none;
-		border: 1px solid #333;
-		color: #737373;
-		font-size: 10px;
-		padding: 2px 8px;
-		border-radius: 4px;
-		cursor: pointer;
-	}
-
-	.context-close:hover {
-		color: #a3a3a3;
-		border-color: #525252;
-	}
-
-	.context-body {
-		flex: 1;
-		background: transparent;
-		border: none;
-		outline: none;
-		color: #a3a3a3;
-		font-size: 12px;
-		line-height: 1.6;
-		padding: 14px;
-		resize: none;
-		font-family: inherit;
-	}
-
-	.context-body::placeholder {
-		color: #2a2a2a;
 	}
 </style>

@@ -1,4 +1,4 @@
-# Atlas Data Model
+# Butterfly Data Model
 
 Shared schema that underpins all milestones. Must be built first (M1 Week 1).
 
@@ -214,7 +214,7 @@ CREATE TABLE import_source (
   created_at    TIMESTAMPTZ DEFAULT now()
 );
 
--- Map external entities to Atlas nodes (dedup + incremental sync)
+-- Map external entities to Butterfly nodes (dedup + incremental sync)
 CREATE TABLE import_mapping (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   source_id     UUID NOT NULL REFERENCES import_source(id),

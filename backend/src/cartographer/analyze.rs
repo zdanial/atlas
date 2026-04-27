@@ -11,13 +11,19 @@ use super::github::TreeEntry;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Finding {
     pub title: String,
-    /// Atlas node type: "ticket", "note", "insight", "idea", "question", etc.
+    /// Butterfly node type: "ticket", "note", "insight", "idea", "question", etc.
     pub node_type: String,
     pub body: String,
-    /// Atlas layer (1 = ticket, 5 = canvas note/insight)
+    /// Butterfly layer (1 = ticket, 5 = canvas note/insight)
     pub layer: i32,
     pub is_unimplemented: bool,
     pub confidence: f64,
+    /// Optional file references that back this finding (e.g. "src/foo.rs:42-55").
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub file_refs: Vec<String>,
+    /// Optional short evidence snippet (1-2 lines of code or quoted text).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub evidence: Option<String>,
 }
 
 impl Finding {
@@ -57,7 +63,7 @@ impl Finding {
 // System prompt
 // ---------------------------------------------------------------------------
 
-const ANALYSIS_SYSTEM: &str = r#"You are the Cartographer agent for Atlas, a project planning tool.
+const ANALYSIS_SYSTEM: &str = r#"You are the Cartographer agent for Butterfly, a project planning tool.
 
 Your job is to compare a project's PLANS directory with its CODE STRUCTURE and identify:
 1. Features or work items described in plans that appear NOT YET IMPLEMENTED in code
@@ -142,43 +148,112 @@ pub fn parse_findings(raw: &str) -> Vec<Finding> {
     };
 
     arr.into_iter()
-        .filter_map(|item| {
-            let title = item["title"].as_str()?.to_string();
-            if title.is_empty() {
-                return None;
-            }
-
-            let node_type = item["node_type"].as_str().unwrap_or("note").to_string();
-            let node_type = if Finding::is_valid_type(&node_type) {
-                node_type
-            } else {
-                "note".to_string()
-            };
-
-            let body = item["body"].as_str().unwrap_or("").to_string();
-            let is_unimplemented = item["is_unimplemented"].as_bool().unwrap_or(false);
-            let confidence = item["confidence"].as_f64().unwrap_or(0.7).clamp(0.0, 1.0);
-            let layer = item["layer"]
-                .as_i64()
-                .map(|l| l as i32)
-                .unwrap_or_else(|| Finding::default_layer(&node_type));
-
-            Some(Finding {
-                title,
-                node_type,
-                body,
-                layer,
-                is_unimplemented,
-                confidence,
-            })
-        })
+        .filter_map(|item| finding_from_value(&item))
         .take(50) // Hard cap to prevent runaway outputs
         .collect()
+}
+
+/// Convert a serde_json Value (one finding) into a Finding, applying type
+/// validation and default layer logic. Returns None if title is missing/empty.
+pub fn finding_from_value(item: &serde_json::Value) -> Option<Finding> {
+    let title = item["title"].as_str()?.to_string();
+    if title.is_empty() {
+        return None;
+    }
+
+    let raw_type = item["node_type"].as_str().unwrap_or("note").to_string();
+    let node_type = if Finding::is_valid_type(&raw_type) {
+        raw_type
+    } else {
+        "note".to_string()
+    };
+
+    let body = item["body"].as_str().unwrap_or("").to_string();
+    let is_unimplemented = item["is_unimplemented"].as_bool().unwrap_or(false);
+    let confidence = item["confidence"].as_f64().unwrap_or(0.7).clamp(0.0, 1.0);
+    let layer = item["layer"]
+        .as_i64()
+        .map(|l| l as i32)
+        .unwrap_or_else(|| Finding::default_layer(&node_type));
+
+    let file_refs: Vec<String> = item["file_refs"]
+        .as_array()
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default();
+    let evidence = item["evidence"].as_str().map(|s| s.to_string());
+
+    Some(Finding {
+        title,
+        node_type,
+        body,
+        layer,
+        is_unimplemented,
+        confidence,
+        file_refs,
+        evidence,
+    })
+}
+
+/// Parse a single line that may contain a `FINDING: {json}` marker emitted
+/// by the streaming Cartographer prompt. Returns None if the line is not a
+/// well-formed finding.
+pub fn parse_finding_line(line: &str) -> Option<Finding> {
+    let trimmed = line.trim();
+    let json = trimmed.strip_prefix("FINDING:")?.trim();
+    let value: serde_json::Value = serde_json::from_str(json).ok()?;
+    finding_from_value(&value)
 }
 
 pub fn analysis_system_prompt() -> &'static str {
     ANALYSIS_SYSTEM
 }
+
+/// System prompt for the streaming Cartographer that runs inside the
+/// claude-code container and has read-only filesystem access to the repo.
+pub fn cartographer_streaming_system_prompt() -> &'static str {
+    CARTOGRAPHER_STREAMING
+}
+
+const CARTOGRAPHER_STREAMING: &str = r#"You are the Cartographer agent for Butterfly, a project planning tool.
+
+You have read-only access to a code repository at the current working directory. Use the Read, Grep, and Glob tools to investigate it. The user has provided no instructions inside the repo — this is an external scan.
+
+GOAL
+Compare what the project's PLANS describe with what is actually IMPLEMENTED, and surface findings that are useful to a project planner: missing work, gaps, observations, open questions.
+
+PROCESS
+1. Glob `plans/**/*.md` to discover any planning documents.
+2. Read the plan files (or the most relevant subset if many).
+3. Use Glob/Grep on the source tree to check what is implemented.
+4. Read source files only when needed to verify claims.
+5. Produce findings as you go (see OUTPUT below).
+
+OUTPUT FORMAT — STRICT
+Emit each finding on its own line, prefixed with the literal token `FINDING:` followed by a single JSON object. No markdown, no commentary, no JSON arrays. Example:
+
+FINDING: {"title":"Build OAuth flow","node_type":"ticket","body":"plans/03-auth.md describes GitHub OAuth but no auth handler exists in src/.","layer":1,"is_unimplemented":true,"confidence":0.9,"file_refs":["plans/03-auth.md"],"evidence":"Plan: 'Users sign in via GitHub OAuth.'"}
+FINDING: {"title":"Canvas zone is implemented","node_type":"insight","body":"src/components/Canvas.svelte exists and matches plan description.","layer":5,"is_unimplemented":false,"confidence":0.95,"file_refs":["src/components/Canvas.svelte"]}
+
+FIELD RULES
+- title: under 80 chars, action-oriented for unimplemented items
+- node_type: one of "ticket","insight","note","idea","question","goal","problem","hypothesis","constraint","decision","risk","reference","bet","intent","epic","phase"
+- body: 1-3 sentences explaining the finding
+- layer: 1 for tickets, 5 for canvas notes/insights/etc
+- is_unimplemented: true if it represents work to do
+- confidence: 0.0-1.0
+- file_refs: array of paths (optionally with :start-end line ranges) you actually opened
+- evidence: short quote from a plan or code snippet supporting the finding (optional)
+
+CONSTRAINTS
+- Aim for 10-30 findings. Hard ceiling 50.
+- Prioritise actionable unimplemented items over generic observations.
+- If `plans/` is empty or missing, infer intent from README + top-level docs.
+- Do NOT modify any file. Tools are read-only.
+- Do NOT wrap the output in code fences or arrays. One `FINDING:` per line."#;
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -226,7 +301,7 @@ mod tests {
     fn build_prompt_contains_plans() {
         let plans = vec![(
             "00-overview.md".to_string(),
-            "# Overview\nThis is Atlas.".to_string(),
+            "# Overview\nThis is Butterfly.".to_string(),
         )];
         let tree = vec![TreeEntry {
             path: "backend/src/main.rs".to_string(),
@@ -235,7 +310,7 @@ mod tests {
         }];
         let prompt = build_prompt(&plans, &tree);
         assert!(prompt.contains("00-overview.md"));
-        assert!(prompt.contains("This is Atlas"));
+        assert!(prompt.contains("This is Butterfly"));
         assert!(prompt.contains("backend/src/main.rs"));
     }
 }

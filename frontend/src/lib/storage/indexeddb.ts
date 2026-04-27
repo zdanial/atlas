@@ -13,7 +13,7 @@ import type {
 	Change
 } from './adapter';
 
-class AtlasDatabase extends Dexie {
+class ButterflyDatabase extends Dexie {
 	nodes!: Table<Node, string>;
 	nodeEdges!: Table<NodeEdge, string>;
 	nodeVersions!: Table<NodeVersion, string>;
@@ -21,7 +21,7 @@ class AtlasDatabase extends Dexie {
 	changes!: Table<Change, string>;
 
 	constructor() {
-		super('atlas');
+		super('butterfly');
 		this.version(1).stores({
 			nodes: 'id, type, layer, projectId, parentId, status',
 			nodeEdges: 'id, sourceId, targetId, relationType',
@@ -51,10 +51,10 @@ class AtlasDatabase extends Dexie {
 }
 
 export class IndexedDBAdapter implements StorageAdapter {
-	private db: AtlasDatabase;
+	private db: ButterflyDatabase;
 
 	constructor() {
-		this.db = new AtlasDatabase();
+		this.db = new ButterflyDatabase();
 	}
 
 	async getNode(id: string): Promise<Node | null> {
@@ -97,6 +97,7 @@ export class IndexedDBAdapter implements StorageAdapter {
 			status: input.status ?? 'active',
 			positionX: input.positionX ?? null,
 			positionY: input.positionY ?? null,
+			positionLocked: false,
 			sortOrder: input.sortOrder ?? Date.now(),
 			createdBy: null,
 			createdAt: now,

@@ -1,4 +1,4 @@
-# Atlas — User Flows
+# Butterfly — User Flows
 
 Every flow a user encounters, from first launch to daily use. Edit this doc freely — it drives the replan.
 
@@ -6,7 +6,7 @@ Every flow a user encounters, from first launch to daily use. Edit this doc free
 
 ## Flow 1: First Launch (Browser-Only Mode)
 
-1. User opens Atlas in browser → lands on **Welcome screen**
+1. User opens Butterfly in browser → lands on **Welcome screen**
 2. "Create your first workspace" → enter workspace name
 3. Optional: "Import an existing project?" → branches to Flow 12 (Onboarding)
 4. Skip → empty canvas with a single project created
@@ -19,7 +19,7 @@ Every flow a user encounters, from first launch to daily use. Edit this doc free
 ## Flow 2: First Launch (Self-Hosted / Supabase)
 
 1. User runs `docker compose up` or deploys to Supabase
-2. Opens Atlas → **Sign In** screen
+2. Opens Butterfly → **Sign In** screen
    - Mode B (local server): optional passphrase or skip
    - Mode C (Supabase): "Sign in with GitHub" or email/password
 3. After auth → same workspace creation as Flow 1
@@ -227,7 +227,7 @@ Intents are the "why" — high-level goals that organize epics.
 
 ## Flow 12: Export & Handoff (L1 → Code)
 
-Atlas's output. This is how work leaves Atlas and enters coding tools.
+Butterfly's output. This is how work leaves Butterfly and enters coding tools.
 
 ### 12a — Single Ticket Export
 1. On a ticket card → **"Copy Command"** button (or `⌘⇧C`)
@@ -261,11 +261,11 @@ Atlas's output. This is how work leaves Atlas and enters coding tools.
 
 ## Flow 13: Project Onboarding (Import)
 
-Bringing an existing project into Atlas.
+Bringing an existing project into Butterfly.
 
 ### 13a — GitHub Import
 1. Settings → "Connect GitHub" → OAuth flow → select repos
-2. **Scanning phase:** Atlas fetches commits, PRs, branches, file tree, docs
+2. **Scanning phase:** Butterfly fetches commits, PRs, branches, file tree, docs
 3. **Cartographer agent** maps:
    - PRs → Tickets (with status based on merge state)
    - Grouped PRs → Epics (by semantic similarity)
@@ -286,7 +286,7 @@ Bringing an existing project into Atlas.
 ### 13c — Linear / Jira / Notion Import (M3)
 1. Connect via OAuth
 2. Fetch projects/issues/documents
-3. Cartographer maps to Atlas layers
+3. Cartographer maps to Butterfly layers
 4. Review & accept
 5. Incremental re-sync available after initial import
 
@@ -423,19 +423,19 @@ Available in every view. Time is a first-class citizen.
 
 ## Flow 18: GitHub Integration (Passive Tracking)
 
-After export, Atlas passively tracks what happens in GitHub.
+After export, Butterfly passively tracks what happens in GitHub.
 
 1. User exports tickets → runs commands in Claude Code → code gets written
-2. Developer (or agent) creates branch: `atlas/<ticket-id>-<slug>`
-3. Atlas detects branch (webhook) → auto-links to ticket → status: "in progress"
-4. PR opens → Atlas auto-populates PR body with ticket spec + context
+2. Developer (or agent) creates branch: `butterfly/<ticket-id>-<slug>`
+3. Butterfly detects branch (webhook) → auto-links to ticket → status: "in progress"
+4. PR opens → Butterfly auto-populates PR body with ticket spec + context
 5. **Reviewer agent** runs on PR:
    - Compares diff against ticket acceptance criteria
    - Posts structured comment: per-AC pass/fail, drift items with severity
 6. PR merges → ticket status: "done" → phase progress bar updates → epic completion % updates
 7. PR closed without merge → ticket: "needs-rework"
 
-User doesn't have to do anything after export. Atlas watches and updates.
+User doesn't have to do anything after export. Butterfly watches and updates.
 
 ---
 
@@ -479,7 +479,7 @@ User doesn't have to do anything after export. Atlas watches and updates.
 
 ## Daily Workflow Summary
 
-A typical day with Atlas:
+A typical day with Butterfly:
 
 1. **Morning brain dump** (Flow 3): Open canvas, dump thoughts about what you learned yesterday, new requirements, questions
 2. **Review suggestions** (Flow 6): Check side rail — Synthesizer found a new cluster, Strategist flagged a stale intent

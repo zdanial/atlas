@@ -1,4 +1,4 @@
-FROM rust:1.88-slim AS builder
+FROM rust:1.95-slim AS builder
 
 RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
 
@@ -11,11 +11,11 @@ FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y ca-certificates libssl3 && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/target/release/atlas-server /usr/local/bin/atlas-server
+COPY --from=builder /app/target/release/butterfly-server /usr/local/bin/butterfly-server
 COPY --from=builder /app/migrations /app/migrations
 
 WORKDIR /app
 ENV RUST_LOG=info
 
 EXPOSE 3001
-CMD ["atlas-server"]
+CMD ["butterfly-server"]

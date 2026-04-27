@@ -1,15 +1,15 @@
-# Atlas — Agent Handoff & Export
+# Butterfly — Agent Handoff & Export
 
-Atlas is the planning brain, not the execution runtime. It doesn't spawn or manage coding agents. Instead, it compiles tickets into **ready-to-run commands and prompt payloads** that you copy to Claude Code, paste into Conductor to kick off an agent swarm, or hand to any compatible tool.
+Butterfly is the planning brain, not the execution runtime. It doesn't spawn or manage coding agents. Instead, it compiles tickets into **ready-to-run commands and prompt payloads** that you copy to Claude Code, paste into Conductor to kick off an agent swarm, or hand to any compatible tool.
 
 ---
 
 ## Core Principle
 
-Atlas's job ends at L1 (Tickets). The handoff to L0 (Code) is an **export**, not an execution. This keeps Atlas simple, decoupled from any specific agent runtime, and compatible with whatever tool the user prefers.
+Butterfly's job ends at L1 (Tickets). The handoff to L0 (Code) is an **export**, not an execution. This keeps Butterfly simple, decoupled from any specific agent runtime, and compatible with whatever tool the user prefers.
 
 ```
-Atlas (planning)                          Agent Runtime (execution)
+Butterfly (planning)                          Agent Runtime (execution)
 ─────────────────                         ────────────────────────
 L5 Canvas
 L4 Intent
@@ -32,14 +32,14 @@ One click copies a ready-to-paste terminal command:
 
 ```bash
 # Copied to clipboard from ticket T-42 "Add Stripe webhook handler"
-cd ~/repos/atlas-backend && claude --print "$(cat <<'PROMPT'
-# Atlas Ticket T-42: Add Stripe webhook handler
+cd ~/repos/butterfly-backend && claude --print "$(cat <<'PROMPT'
+# Butterfly Ticket T-42: Add Stripe webhook handler
 
 ## Intent
 Add a webhook endpoint that receives Stripe payment events, verifies the signature, and updates order status in the database.
 
 ## Repo
-atlas-backend (Rust + Axum)
+butterfly-backend (Rust + Axum)
 
 ## Files to touch
 - src/routes/payments.rs (new route)
@@ -63,7 +63,7 @@ We're adding Stripe as the payment provider. The checkout flow is handled by the
 This phase covers all backend payment logic. Phase 1 (DB schema) is already merged. Phase 3 (frontend) depends on this endpoint existing.
 
 ## Branch Convention
-Create branch: atlas/atlas/T-42-stripe-webhook
+Create branch: butterfly/butterfly/T-42-stripe-webhook
 PROMPT
 )"
 ```
@@ -75,7 +75,7 @@ PROMPT
 Downloads a `CLAUDE.md` that the user drops into their repo before starting Claude Code:
 
 ```markdown
-# Atlas Ticket T-42: Add Stripe webhook handler
+# Butterfly Ticket T-42: Add Stripe webhook handler
 
 ## Intent
 Add a webhook endpoint that receives Stripe payment events...
@@ -94,7 +94,7 @@ Add a webhook endpoint that receives Stripe payment events...
 ...
 
 ## Branch Convention
-Create branch: atlas/atlas/T-42-stripe-webhook
+Create branch: butterfly/butterfly/T-42-stripe-webhook
 
 ## Related Tickets
 - T-41 (DB schema) — merged, see PR #138
@@ -111,19 +111,19 @@ Export all tickets in a Phase as an ordered list with dependency annotations:
 
 ## Execution Order
 
-### 1. T-41: Add payment tables (atlas-backend)
+### 1. T-41: Add payment tables (butterfly-backend)
 [command: claude --print "..."]
 Status: ✅ Done (PR #138 merged)
 
-### 2. T-44: Provision Stripe webhook secret (atlas-infra)
+### 2. T-44: Provision Stripe webhook secret (butterfly-infra)
 [command: claude --print "..."]
 Status: ⏳ Can start now (no dependencies)
 
-### 3. T-42: Add Stripe webhook handler (atlas-backend)
+### 3. T-42: Add Stripe webhook handler (butterfly-backend)
 [command: claude --print "..."]
 Status: ⏳ Blocked by T-44 (needs STRIPE_WEBHOOK_SECRET)
 
-### 4. T-43: Payment status UI (atlas-frontend)
+### 4. T-43: Payment status UI (butterfly-frontend)
 [command: claude --print "..."]
 Status: ⏳ Blocked by T-42 (needs endpoint to exist)
 ```
@@ -139,7 +139,7 @@ Export a configuration that Conductor can consume to kick off parallel agents:
     {
       "id": "T-44",
       "title": "Provision Stripe webhook secret",
-      "repo": "atlas-infra",
+      "repo": "butterfly-infra",
       "prompt": "...(full prompt payload)...",
       "dependencies": [],
       "canParallelWith": ["T-42-prep"]
@@ -147,7 +147,7 @@ Export a configuration that Conductor can consume to kick off parallel agents:
     {
       "id": "T-42",
       "title": "Add Stripe webhook handler",
-      "repo": "atlas-backend",
+      "repo": "butterfly-backend",
       "prompt": "...(full prompt payload)...",
       "dependencies": ["T-44"],
       "canParallelWith": ["T-43-prep"]
@@ -155,7 +155,7 @@ Export a configuration that Conductor can consume to kick off parallel agents:
     {
       "id": "T-43",
       "title": "Payment status UI",
-      "repo": "atlas-frontend",
+      "repo": "butterfly-frontend",
       "prompt": "...(full prompt payload)...",
       "dependencies": ["T-42"],
       "canParallelWith": []
@@ -166,7 +166,7 @@ Export a configuration that Conductor can consume to kick off parallel agents:
     "wave2": ["T-42"],
     "wave3": ["T-43"]
   },
-  "branchConvention": "atlas/{project}/{ticketId}-{slug}"
+  "branchConvention": "butterfly/{project}/{ticketId}-{slug}"
 }
 ```
 
@@ -192,7 +192,7 @@ The user opens Conductor, imports this config, and it spins up workspaces for ea
 ```
 ┌──────────────────────────────────────────┐
 │  T-42: Add Stripe webhook handler         │
-│  repo: atlas-backend  •  status: ready    │
+│  repo: butterfly-backend  •  status: ready    │
 │                                           │
 │  [📋 Copy Command]  [📄 CLAUDE.md]  [⋯]  │
 │                                           │
@@ -304,24 +304,24 @@ The prompt payload includes enough context for the agent to work autonomously, b
 
 ## Status Tracking (Post-Export)
 
-Atlas doesn't manage agent sessions, but it does track what happened after export:
+Butterfly doesn't manage agent sessions, but it does track what happened after export:
 
 ### Manual Status Updates
 User can mark tickets as: `ready` → `exported` → `in-progress` → `done` → `verified`
 
 ### GitHub-Based Tracking
-When a PR opens with a branch matching `atlas/<project>/<ticket-id>-*`:
+When a PR opens with a branch matching `butterfly/<project>/<ticket-id>-*`:
 - Ticket auto-moves to `in-progress`
 - PR merge → ticket moves to `done`
 - Reviewer agent runs on PR (if GitHub integration is connected) → ticket moves to `verified` or `verified-with-drift`
 
-This is passive — Atlas watches GitHub, it doesn't control the agent.
+This is passive — Butterfly watches GitHub, it doesn't control the agent.
 
 ---
 
 ## Provider Registry (BYO API Keys)
 
-API keys power Atlas's **internal agents** (Connector, Synthesizer, Architect, Decomposer, Reviewer, Historian, Strategist) — not coding agents. The coding happens outside Atlas.
+API keys power Butterfly's **internal agents** (Connector, Synthesizer, Architect, Decomposer, Reviewer, Historian, Strategist) — not coding agents. The coding happens outside Butterfly.
 
 ### Capability Enum
 
@@ -402,7 +402,7 @@ Encrypted storage in DB for Mode B/C. Browser-local encrypted storage for Mode A
 ┌─────────────────────────────────────────┐
 │  Settings > AI Providers                 │
 │                                          │
-│  These power Atlas's planning agents     │
+│  These power Butterfly's planning agents     │
 │  (not coding — coding happens in your    │
 │  terminal or Conductor)                  │
 │                                          │
@@ -428,10 +428,10 @@ Encrypted storage in DB for Mode B/C. Browser-local encrypted storage for Mode A
 
 ## Data Model
 
-No `agent_session` or `hook_event` tables needed. The export model is stateless from Atlas's perspective. Tracking comes from GitHub integration (PR auto-link) and manual status updates.
+No `agent_session` or `hook_event` tables needed. The export model is stateless from Butterfly's perspective. Tracking comes from GitHub integration (PR auto-link) and manual status updates.
 
 ```sql
--- Provider configuration (encrypted keys) — powers Atlas's internal agents
+-- Provider configuration (encrypted keys) — powers Butterfly's internal agents
 CREATE TABLE provider_config (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id    UUID NOT NULL REFERENCES project(id),

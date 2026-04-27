@@ -235,7 +235,7 @@ pub async fn scan_repo(
                  status, position_x, position_y, created_by, created_at, updated_at",
             )
             .bind(body.project_id)
-            .bind(format!("Epic: {}", label))
+            .bind(format!("Epic: {label}"))
             .bind(json!({
                 "prd": { "type": "doc", "content": [] },
                 "techPlan": { "type": "doc", "content": [] },
@@ -292,12 +292,12 @@ fn generate_stub_prs(repo_slug: &str) -> Vec<GithubPr> {
     vec![
         GithubPr {
             number: 1,
-            title: format!("Initial setup for {}", repo_slug),
+            title: format!("Initial setup for {repo_slug}"),
             body: Some("Set up project scaffolding".into()),
             state: "closed".into(),
             merged: true,
             head_sha: Some("abc1234".into()),
-            url: format!("https://github.com/{}/pull/1", repo_slug),
+            url: format!("https://github.com/{repo_slug}/pull/1"),
             created_at: "2024-01-15T10:00:00Z".into(),
             labels: vec!["setup".into()],
         },
@@ -308,7 +308,7 @@ fn generate_stub_prs(repo_slug: &str) -> Vec<GithubPr> {
             state: "closed".into(),
             merged: true,
             head_sha: Some("def5678".into()),
-            url: format!("https://github.com/{}/pull/2", repo_slug),
+            url: format!("https://github.com/{repo_slug}/pull/2"),
             created_at: "2024-01-20T14:00:00Z".into(),
             labels: vec!["auth".into(), "feature".into()],
         },
@@ -319,7 +319,7 @@ fn generate_stub_prs(repo_slug: &str) -> Vec<GithubPr> {
             state: "closed".into(),
             merged: true,
             head_sha: Some("ghi9012".into()),
-            url: format!("https://github.com/{}/pull/3", repo_slug),
+            url: format!("https://github.com/{repo_slug}/pull/3"),
             created_at: "2024-02-01T09:00:00Z".into(),
             labels: vec!["auth".into(), "bugfix".into()],
         },
@@ -330,7 +330,7 @@ fn generate_stub_prs(repo_slug: &str) -> Vec<GithubPr> {
             state: "open".into(),
             merged: false,
             head_sha: Some("jkl3456".into()),
-            url: format!("https://github.com/{}/pull/4", repo_slug),
+            url: format!("https://github.com/{repo_slug}/pull/4"),
             created_at: "2024-02-10T11:00:00Z".into(),
             labels: vec!["feature".into(), "ui".into()],
         },
@@ -341,7 +341,7 @@ fn generate_stub_prs(repo_slug: &str) -> Vec<GithubPr> {
             state: "open".into(),
             merged: false,
             head_sha: Some("mno7890".into()),
-            url: format!("https://github.com/{}/pull/5", repo_slug),
+            url: format!("https://github.com/{repo_slug}/pull/5"),
             created_at: "2024-02-15T16:00:00Z".into(),
             labels: vec!["refactor".into()],
         },

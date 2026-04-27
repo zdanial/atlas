@@ -48,21 +48,21 @@ function buildSystemPrompt(
 
 	const bodyInstruction = hasBody
 		? 'Set "body" to null (the note already has content).'
-		: `If the body is empty, write a 1-2 sentence body appropriate for the type:
-- goal: describe the desired outcome and what success looks like
-- problem: describe the issue and its impact
-- idea: describe the approach and key benefit
-- hypothesis: frame as "We believe X will result in Y"
-- constraint: state what is limited and why
-- decision: state what was decided and the key reason
-- question: clarify what needs answering and why it matters
-- risk: describe what could go wrong and the potential impact
-- insight: state the realization and what it implies
-- reference: describe what the resource covers
-- bet: frame as "We bet X will lead to Y because Z"
-- note: brief description of the content`;
+		: `If the body is empty, write a 2-4 sentence body appropriate for the type:
+- goal: desired outcome + success criteria + timeline if implied
+- problem: the issue + its impact + who or what it affects
+- idea: the approach + key benefit + how it differs from alternatives
+- hypothesis: "We believe [X] will result in [Y] because [Z]." + what would validate/invalidate it
+- constraint: what is limited + why + consequences of violating it
+- decision: what was decided + the key reason + alternatives considered
+- question: what needs answering + why it matters + who might know
+- risk: what could go wrong + likelihood + potential impact
+- insight: the realization + supporting evidence + what it implies for the project
+- reference: what the resource covers + why it's relevant
+- bet: "We bet [X] will lead to [Y] because [Z]." + the downside if wrong
+- note: summarize the content + note any action items or follow-ups`;
 
-	return `You are a note processor for Atlas, a spatial thinking canvas.${contextSection}
+	return `You are a note processor for Butterfly, a spatial thinking canvas.${contextSection}
 
 Given a note's title and optional existing body, you must:
 1. Classify into ONE of: goal, problem, hypothesis, idea, constraint, decision, question, risk, insight, reference, bet, note

@@ -1,10 +1,13 @@
 /**
- * Demo seed data for Atlas.
+ * Demo seed data for Butterfly — "TaskFlow" scenario.
+ *
+ * A startup founder planning a B2B mobile task management app.
+ * This exercises every Butterfly feature with relatable, real-world data.
  *
  * Three-zone structure:
- * - Notes (L5): raw thoughts positioned on a time axis (x = days from today)
+ * - Notes (L5): raw founder thoughts positioned on a time axis
  * - Planning (L4→L3→L2→L1): hierarchical plan with parentId links
- * - Docs: populated by Cartographer (not seeded)
+ * - Docs: populated automatically from plan structure
  */
 
 import type { StorageAdapter, CreateNode, CreateEdge } from '$lib/storage/adapter';
@@ -39,415 +42,405 @@ export async function seedDemo(storage: StorageAdapter, projectId: string) {
 
 	const nodes: SeedNode[] = [
 		// ═══════════════════════════════════════════════════════════
-		// NOTES ZONE — L5 (raw thoughts on the time axis)
+		// NOTES ZONE — L5 (founder's raw thoughts on the time axis)
 		// ═══════════════════════════════════════════════════════════
 
-		// 5 days ago — early thinking
+		// 5 days ago — initial vision
 		{
-			_key: 'note-initial',
-			type: 'note',
+			_key: 'goal-launch',
+			type: 'goal',
 			layer: 5,
 			projectId,
-			title: 'Atlas should compile thoughts into plans',
+			title: 'Launch TaskFlow MVP to 100 beta users by end of Q2',
 			body: body(
-				'The core loop: dump thoughts → classify → structure into epics/tickets → export as executable plans. Think Notion meets Linear meets a whiteboard.'
+				'We need a working product in front of real users by June. Spans three epics: [[Core Task Engine]], [[Team Collaboration]], and [[Onboarding & Retention]]. Focus on core task management — nothing fancy, just reliable and fast.'
 			),
 			status: 'active',
 			positionX: timeX(5),
 			positionY: 40
 		},
 		{
-			_key: 'decision-svelte5',
-			type: 'decision',
-			layer: 5,
-			projectId,
-			title: 'Use Svelte 5 runes, not legacy reactivity',
-			body: body(
-				'$state / $derived / $effect give fine-grained reactivity. SvelteMap for O(1) node lookups. No stores API.'
-			),
-			status: 'done',
-			positionX: timeX(5),
-			positionY: 160
-		},
-		{
-			_key: 'constraint-no-server',
+			_key: 'constraint-team',
 			type: 'constraint',
 			layer: 5,
 			projectId,
-			title: 'MVP must work without a server',
+			title: 'Team is 3 engineers + 1 designer, no mobile devs',
 			body: body(
-				'IndexedDB-only Mode A is the primary deployment for early testers. No Docker, no Postgres, no signup. Just open a URL.'
+				'Nobody on the team has shipped a native mobile app. We need a cross-platform solution or we hire.'
 			),
 			status: 'active',
+			positionX: timeX(5),
+			positionY: 160
+		},
+		{
+			_key: 'decision-rn',
+			type: 'decision',
+			layer: 5,
+			projectId,
+			title: 'Go React Native for cross-platform',
+			body: body(
+				'RN lets us ship iOS and Android from one codebase. Tradeoff to watch: see [[RN performance on mid-range Android devices]] for the perf risk and [[Targeting both iOS and Android at launch means shipping neither well]] for the focus risk. The team knows React. Expo makes the build pipeline manageable.'
+			),
+			status: 'done',
 			positionX: timeX(5),
 			positionY: 280
 		},
 
-		// 4 days ago
+		// 4 days ago — market insights
 		{
-			_key: 'insight-brain-dump',
+			_key: 'insight-simplicity',
 			type: 'insight',
 			layer: 5,
 			projectId,
-			title: 'Brain dump is the killer onboarding flow',
+			title: 'Existing tools overwhelm small teams — our angle is radical simplicity',
 			body: body(
-				'Users paste unstructured text → see it classified into typed notes on a canvas in seconds. This is the "aha" moment.'
+				'Talked to 12 small-team leads. They all use Trello or sticky notes. Asana/Monday are too complex. Our wedge is dead-simple task creation.'
 			),
 			status: 'active',
 			positionX: timeX(4),
 			positionY: 40
 		},
 		{
-			_key: 'idea-export-claude',
-			type: 'idea',
-			layer: 5,
-			projectId,
-			title: 'Export tickets as Claude Code commands',
-			body: body(
-				'One-click export: compile ticket context chain → copy a `claude` CLI command with full prompt payload.'
-			),
-			status: 'active',
-			positionX: timeX(4),
-			positionY: 160
-		},
-
-		// 3 days ago
-		{
-			_key: 'question-embedding',
+			_key: 'question-push',
 			type: 'question',
 			layer: 5,
 			projectId,
-			title: 'Which embedding model for edge inference?',
+			title: 'Build our own push notifications or use Firebase?',
 			body: body(
-				'Options: text-embedding-3-small (cheap), voyage-3 (best quality), or local ONNX (privacy). Need to benchmark cost vs accuracy.'
+				'Firebase is fast to set up but adds a Google dependency. Own solution gives more control but takes 2+ weeks.'
+			),
+			status: 'active',
+			positionX: timeX(4),
+			positionY: 160
+		},
+		{
+			_key: 'risk-both-platforms',
+			type: 'risk',
+			layer: 5,
+			projectId,
+			title: 'Targeting both iOS and Android at launch means shipping neither well',
+			body: body(
+				'RN performance on mid-range Android is a known issue. We might need to pick one platform for beta and add the other post-launch.'
+			),
+			status: 'active',
+			positionX: timeX(4),
+			positionY: 280
+		},
+
+		// 3 days ago — feature ideas
+		{
+			_key: 'idea-smart-suggest',
+			type: 'idea',
+			layer: 5,
+			projectId,
+			title: 'Smart task suggestions based on team patterns',
+			body: body(
+				'If the system can learn recurring tasks (standup notes, deploy checks), it could auto-suggest them. Big differentiator.'
 			),
 			status: 'active',
 			positionX: timeX(3),
 			positionY: 40
 		},
 		{
-			_key: 'risk-llm-cost',
-			type: 'risk',
+			_key: 'problem-churn',
+			type: 'problem',
 			layer: 5,
 			projectId,
-			title: 'LLM API costs could explode',
+			title: 'User onboarding has 70% week-1 churn in similar apps',
 			body: body(
-				'Edge inference runs pairwise comparisons. 100 notes = 4,950 pairs. Need smart batching, caching, and spend limits.'
+				'Industry data shows most task apps lose users in the first week. Empty state is the killer — users open the app, see nothing, leave. Two angles we are exploring: [[Import from Trello/Asana as killer onboarding hook]] and [[If onboarding creates real tasks from existing workflow, retention doubles]].'
 			),
 			status: 'active',
 			positionX: timeX(3),
 			positionY: 160
 		},
 		{
-			_key: 'hypothesis-ai-edges',
+			_key: 'hypothesis-onboard',
 			type: 'hypothesis',
 			layer: 5,
 			projectId,
-			title: 'AI edges are more valuable than manual ones',
+			title: 'If onboarding creates real tasks from existing workflow, retention doubles',
 			body: body(
-				"Users won't draw edges manually. But if the system infers them, users will confirm/reject — much lower friction."
+				'Instead of an empty app, import existing tasks from Trello/Asana/email. User sees immediate value — their actual work, organized.'
 			),
 			status: 'active',
-			positionX: timeX(3),
-			positionY: 280
-		},
-
-		// 2 days ago
-		{
-			_key: 'idea-three-zones',
-			type: 'idea',
-			layer: 5,
-			projectId,
-			title: 'Three zones: Notes, Planning, Docs',
-			body: body(
-				'Notes for raw thinking with AI chat. Planning for hierarchical drill-down (intents→epics→tickets). Docs auto-filled from repo analysis.'
-			),
-			status: 'done',
 			payload: {
 				chatHistory: [
 					{
 						role: 'user',
-						content:
-							'I want the app to have three distinct modes — one for raw thinking, one for structured planning, one for documentation'
+						content: 'The biggest problem with task apps is the empty state. How do we solve this?'
 					},
 					{
 						role: 'assistant',
 						content:
-							"That's a clean separation. The Notes zone is where ideas live before they're ready. Planning is where they get structured into a hierarchy. Docs is auto-maintained from your actual code. The key interaction is the integration flow — when a note is ready, AI helps slot it into the right place in the plan."
+							"Import is the answer. If a user's first experience is seeing their existing tasks organized beautifully, they'll stay. The Trello API is well-documented — we could build an import pipeline in a few days."
 					}
 				]
 			},
+			positionX: timeX(3),
+			positionY: 280
+		},
+
+		// 2 days ago — scoping decisions
+		{
+			_key: 'decision-mvp-scope',
+			type: 'decision',
+			layer: 5,
+			projectId,
+			title: 'MVP scope: task CRUD + team sharing + notifications. No analytics, no integrations',
+			body: body(
+				'We keep cutting scope. Analytics and third-party integrations are post-launch. Core loop only: create, assign, complete, notify.'
+			),
+			status: 'done',
 			positionX: timeX(2),
 			positionY: 40
 		},
 		{
-			_key: 'problem-dedup',
-			type: 'problem',
-			layer: 5,
-			projectId,
-			title: 'Duplicate notes after multiple brain dumps',
-			body: body(
-				'Users paste overlapping text across sessions. Need cosine-similarity dedup (>0.85) or title-match detection.'
-			),
-			status: 'active',
-			positionX: timeX(2),
-			positionY: 160
-		},
-
-		// 1 day ago
-		{
-			_key: 'idea-time-axis',
+			_key: 'idea-import',
 			type: 'idea',
 			layer: 5,
 			projectId,
-			title: 'Canvas x-axis should represent time',
+			title: 'Import from Trello/Asana as killer onboarding hook',
 			body: body(
-				'Notes placed on a timeline by default, so you can see the progression of your thinking. Days as default unit, zoom to weeks/months.'
+				'One-click migration. Map their boards to our projects, their cards to our tasks. Instant value on first launch.'
 			),
-			status: 'done',
+			status: 'active',
+			positionX: timeX(2),
+			positionY: 160
+		},
+		{
+			_key: 'risk-android',
+			type: 'risk',
+			layer: 5,
+			projectId,
+			title: 'RN performance on mid-range Android devices',
+			body: body(
+				'List rendering with 200+ tasks might stutter. Need to test on Pixel 4a and Samsung A-series early, not just iPhone 14.'
+			),
+			status: 'active',
+			positionX: timeX(2),
+			positionY: 280
+		},
+		{
+			_key: 'constraint-runway',
+			type: 'constraint',
+			layer: 5,
+			projectId,
+			title: '$50K runway — must ship in 8 weeks',
+			body: body(
+				'Burn rate is ~$6K/week with contractors. 8 weeks gives us a buffer, but no room for scope creep.'
+			),
+			status: 'active',
+			positionX: timeX(2),
+			positionY: 400
+		},
+
+		// 1 day ago — customer feedback
+		{
+			_key: 'insight-slack',
+			type: 'insight',
+			layer: 5,
+			projectId,
+			title: 'Talked to 5 customers — they all want Slack integration first',
+			body: body(
+				'Every single interview mentioned Slack. "I live in Slack, I want to create tasks without leaving." This is the #1 post-MVP feature, slotted into [[Team Collaboration]].'
+			),
+			status: 'active',
 			positionX: timeX(1),
 			positionY: 40
 		},
 		{
-			_key: 'question-mobile',
+			_key: 'question-web',
 			type: 'question',
 			layer: 5,
 			projectId,
-			title: 'Should we support mobile / tablet?',
+			title: 'Need web app at launch or mobile-only?',
 			body: body(
-				'Canvas touch interactions are complex. Could start with read-only mobile view and edit on desktop only.'
+				'Mobile-first is our pitch, but team leads use laptops. A basic web dashboard for task assignment might be needed day 1.'
 			),
 			status: 'active',
 			positionX: timeX(1),
 			positionY: 160
 		},
-
-		// Today
 		{
-			_key: 'note-today',
-			type: 'note',
+			_key: 'bet-mobile-first',
+			type: 'bet',
 			layer: 5,
 			projectId,
-			title: 'Three zones working, planning hierarchy built',
+			title: 'Mobile-first + Slack will get 100 users faster than a web app',
 			body: body(
-				'Sidebar navigation between Notes/Planning/Docs is live. Planning zone has breadcrumb drill-down. Time axis on notes canvas. Next: wire up the integrate flow so notes can be promoted into the plan.'
+				'Bet: if we nail the mobile experience and add /taskflow Slack commands, we hit 100 users before needing a web app.'
 			),
 			status: 'active',
-			positionX: timeX(0),
+			positionX: timeX(1),
+			positionY: 280
+		},
+
+		// ── Conversation tree branching off "Smart task suggestions" (showcases ThreadView + Fork) ──
+		{
+			_key: 'conv-question',
+			type: 'question',
+			layer: 5,
+			projectId,
+			title: 'Suggest based on history or context?',
+			body: body(
+				'Two paths: pattern-match what users do every Monday (history) vs infer from current task list and recent activity (context). Which signal do we build for v1?'
+			),
+			status: 'active',
+			positionX: timeX(3) + 240,
 			positionY: 40
 		},
 		{
-			_key: 'goal-integrate-flow',
-			type: 'goal',
+			_key: 'conv-insight-history',
+			type: 'insight',
 			layer: 5,
 			projectId,
-			title: 'Notes should flow into the plan automatically',
+			title: 'History wins for routine work',
 			body: body(
-				'When a note is fleshed out via AI chat, clicking "Integrate" should analyze existing plan and slot it in — creating or updating epics/tickets as needed.'
+				'Standups, weekly reports, deploy checklists — the same items recur. Tracking the last 30 days of completions gives near-perfect suggestions for the routine 60% of work.'
 			),
 			status: 'active',
-			positionX: timeX(0),
-			positionY: 160
+			positionX: timeX(3) + 480,
+			positionY: -20
+		},
+		{
+			_key: 'conv-insight-context',
+			type: 'insight',
+			layer: 5,
+			projectId,
+			title: 'Context wins for new projects',
+			body: body(
+				'When a user creates a new project, history is empty. Reading the project description plus the first few tasks plus similar past projects produces good first suggestions.'
+			),
+			status: 'active',
+			positionX: timeX(3) + 480,
+			positionY: 100
+		},
+		{
+			_key: 'conv-decision',
+			type: 'decision',
+			layer: 5,
+			projectId,
+			title: 'Ship history-based v1, layer context in v2',
+			body: body(
+				'History is simpler to build and covers 60% of value. Context-based suggestions need an LLM and are risky for an MVP. v1 = history-only; v2 = add context layer. Closes the [[Smart task suggestions based on team patterns]] thread.'
+			),
+			status: 'draft',
+			positionX: timeX(3) + 720,
+			positionY: 40
 		},
 
 		// ═══════════════════════════════════════════════════════════
-		// PLANNING ZONE — L4 Features / Goals
+		// PLANNING ZONE — L4 Feature (top-level)
 		// ═══════════════════════════════════════════════════════════
 		{
-			_key: 'intent-mvp',
+			_key: 'feature-mvp',
 			type: 'feature',
 			layer: 4,
 			projectId,
-			title: 'Ship browser-only MVP',
+			title: 'TaskFlow MVP Launch',
 			body: body(
-				'Working standalone canvas with brain dump, AI classification, and three-zone navigation. No server required.'
+				'Ship a working mobile task management app to 100 beta users. Built from three epics: [[Core Task Engine]], [[Team Collaboration]], and [[Onboarding & Retention]]. Origin: [[Launch TaskFlow MVP to 100 beta users by end of Q2]].'
 			),
 			status: 'active',
 			payload: {
-				targetOutcome:
-					'Users can dump 50+ notes, chat with AI to develop them, and see a structured plan emerge',
-				deadline: '2026-06-01',
-				tags: ['frontend', 'ai', 'canvas']
+				targetOutcome: '100 active beta users with >30% weekly retention',
+				deadline: '2026-06-30',
+				tags: ['mobile', 'mvp', 'react-native']
 			},
 			positionX: 100,
 			positionY: 60
 		},
-		{
-			_key: 'intent-github',
-			type: 'feature',
-			layer: 4,
-			projectId,
-			title: 'Bootstrap projects from GitHub',
-			body: body(
-				'Scan an existing repo, run Cartographer analysis, auto-generate docs and backfill planning history.'
-			),
-			status: 'active',
-			payload: {
-				targetOutcome:
-					'Scanning a 500-PR repo fills in Docs zone and creates initial plan structure',
-				deadline: '2026-07-15',
-				tags: ['backend', 'github', 'ai']
-			},
-			positionX: 400,
-			positionY: 60
-		},
-		{
-			_key: 'intent-collab',
-			type: 'goal',
-			layer: 4,
-			projectId,
-			title: 'Enable team collaboration',
-			body: body(
-				'Docker Compose setup so a small team can share a single Atlas instance. Real-time sync via WebSockets.'
-			),
-			status: 'draft',
-			payload: {
-				targetOutcome: 'docker compose up → full stack running, 2+ users editing simultaneously',
-				deadline: '2026-09-01',
-				timeHorizon: 'quarter',
-				tags: ['infra', 'backend']
-			},
-			positionX: 700,
-			positionY: 60
-		},
 
 		// ═══════════════════════════════════════════════════════════
-		// PLANNING ZONE — L3 Epics (children of features/goals)
+		// PLANNING ZONE — L3 Epics
 		// ═══════════════════════════════════════════════════════════
 		{
-			_key: 'epic-canvas',
+			_key: 'epic-task-engine',
 			type: 'epic',
 			layer: 3,
 			projectId,
-			title: 'Canvas interactions & polish',
+			title: 'Core Task Engine',
 			body: body(
-				'Multi-select, box-select, edge drawing, undo/redo, context menu, time axis, 60fps pan/zoom.'
+				'CRUD operations, data model, API layer, and mobile UI for tasks. The foundation everything else builds on.'
 			),
-			status: 'done',
+			status: 'active',
 			payload: {
 				prd: { type: 'doc', content: [] },
 				techPlan: { type: 'doc', content: [] },
-				openQuestions: [],
-				tags: ['frontend', 'canvas']
+				openQuestions: ['Should tasks support subtasks in MVP or defer to v2?'],
+				tags: ['backend', 'mobile']
 			},
 			positionX: 60,
 			positionY: 60
 		},
 		{
-			_key: 'epic-classifier',
+			_key: 'epic-collab',
 			type: 'epic',
 			layer: 3,
 			projectId,
-			title: 'AI classifier & edge inference',
+			title: 'Team Collaboration',
 			body: body(
-				'Provider registry, callModel abstraction, heuristic fallback. Batch classify new notes, infer pairwise edges.'
+				'Sharing, permissions, team workspaces, and real-time updates. Users need to see changes instantly.'
 			),
 			status: 'active',
 			payload: {
 				prd: { type: 'doc', content: [] },
 				techPlan: { type: 'doc', content: [] },
-				openQuestions: ['Which embedding model gives best cost/quality for edge inference?'],
-				tags: ['ai', 'backend']
+				openQuestions: ['WebSocket or polling for real-time updates?'],
+				tags: ['backend', 'realtime']
 			},
 			positionX: 340,
 			positionY: 60
 		},
 		{
-			_key: 'epic-zones',
+			_key: 'epic-onboard',
 			type: 'epic',
 			layer: 3,
 			projectId,
-			title: 'Three-zone navigation',
+			title: 'Onboarding & Retention',
 			body: body(
-				'Zone sidebar, Notes/Planning/Docs zones. Planning hierarchy with breadcrumb drill-down. Note AI chat panel.'
+				'Import pipeline from Trello/Asana, first-run experience, and empty-state handling to reduce week-1 churn.'
 			),
-			status: 'active',
+			status: 'draft',
 			payload: {
 				prd: { type: 'doc', content: [] },
 				techPlan: { type: 'doc', content: [] },
-				openQuestions: []
+				openQuestions: ['Which import source to prioritize — Trello or Asana?'],
+				tags: ['growth', 'onboarding']
 			},
 			positionX: 620,
 			positionY: 60
 		},
-		{
-			_key: 'epic-integrate',
-			type: 'epic',
-			layer: 3,
-			projectId,
-			title: 'Notes → Plan integration flow',
-			body: body(
-				'When a note is fleshed out, AI analyzes it against the existing plan and proposes where to slot it in. User reviews and confirms.'
-			),
-			status: 'draft',
-			payload: {
-				prd: { type: 'doc', content: [] },
-				techPlan: { type: 'doc', content: [] },
-				openQuestions: ['Should integration create new epics or only add to existing ones?']
-			},
-			positionX: 900,
-			positionY: 60
-		},
-		{
-			_key: 'epic-cartographer',
-			type: 'epic',
-			layer: 3,
-			projectId,
-			title: 'Cartographer & Docs zone',
-			body: body(
-				'Wire real Anthropic API calls, build docs UI with Architecture/Built/Planned/Questions pages from Cartographer findings.'
-			),
-			status: 'draft',
-			payload: {
-				prd: { type: 'doc', content: [] },
-				techPlan: { type: 'doc', content: [] },
-				openQuestions: []
-			},
-			positionX: 60,
-			positionY: 60
-		},
-		{
-			_key: 'epic-docker',
-			type: 'epic',
-			layer: 3,
-			projectId,
-			title: 'Docker Compose deployment',
-			body: body('Multi-stage Dockerfiles, PG health checks, .env config, WebSocket proxy.'),
-			status: 'draft',
-			payload: {
-				prd: { type: 'doc', content: [] },
-				techPlan: { type: 'doc', content: [] },
-				openQuestions: []
-			},
-			positionX: 340,
-			positionY: 60
-		},
 
 		// ═══════════════════════════════════════════════════════════
-		// PLANNING ZONE — L2 Phases (children of epics)
+		// PLANNING ZONE — L2 Phases
 		// ═══════════════════════════════════════════════════════════
+
+		// Core Task Engine phases
 		{
-			_key: 'phase-provider-registry',
+			_key: 'phase-data-api',
 			type: 'phase',
 			layer: 2,
 			projectId,
-			title: 'Phase 1: Provider registry & callModel',
+			title: 'Phase 1: Data Model & API',
 			body: body(
-				'localStorage API keys, capability routing (classification → Anthropic, embedding → OpenAI), model prefs in settings.'
+				'PostgreSQL schema, REST API with Express, authentication, and task CRUD endpoints.'
 			),
 			status: 'done',
 			payload: {
-				objective:
-					'Stand up a pluggable provider registry so the rest of the AI stack has a stable callModel() abstraction',
+				objective: 'Stand up the backend so the mobile app has a stable API to build against',
 				fileChanges: [
-					{ path: 'src/lib/agents/providers.ts', action: 'create' },
-					{ path: 'src/lib/agents/connector.svelte.ts', action: 'create' }
+					{ path: 'server/models/task.ts', action: 'create' },
+					{ path: 'server/routes/tasks.ts', action: 'create' },
+					{ path: 'server/middleware/auth.ts', action: 'create' }
 				],
 				archNotes:
-					'Capability-based routing pattern. Each provider registers capabilities (classification, embedding, chat). callModel() dispatches to the provider with the matching capability. This decouples feature code from specific LLM vendors.',
+					'REST over GraphQL for simplicity. JWT auth with refresh tokens. PostgreSQL with Prisma ORM for type safety.',
 				verifyCriteria: [
-					'callModel resolves with mock in tests',
-					'Settings UI persists keys to localStorage'
+					'CRUD endpoints return correct responses',
+					'Auth middleware rejects invalid tokens',
+					'Database migrations run cleanly'
 				],
 				complexity: 'med',
 				contextBundle: []
@@ -456,27 +449,27 @@ export async function seedDemo(storage: StorageAdapter, projectId: string) {
 			positionY: 60
 		},
 		{
-			_key: 'phase-heuristic',
+			_key: 'phase-mobile-ui',
 			type: 'phase',
 			layer: 2,
 			projectId,
-			title: 'Phase 2: Classification pipeline',
-			body: body(
-				'Heuristic fallback + LLM classifier + batch processing + classification result UI.'
-			),
+			title: 'Phase 2: Mobile UI',
+			body: body('React Native screens: task list, task detail, create/edit, and swipe actions.'),
 			status: 'active',
 			payload: {
 				objective:
-					'Classify brain-dump notes into typed cards using heuristics first, then LLM for ambiguous cases',
+					'Build the core mobile experience — fast list rendering, smooth animations, offline-first',
 				fileChanges: [
-					{ path: 'src/lib/agents/classifier.ts', action: 'modify' },
-					{ path: 'src/lib/components/ClassifyResultUI.svelte', action: 'create' }
+					{ path: 'mobile/screens/TaskList.tsx', action: 'create' },
+					{ path: 'mobile/screens/TaskDetail.tsx', action: 'create' },
+					{ path: 'mobile/components/TaskCard.tsx', action: 'create' }
 				],
-				archNotes: 'Heuristic fires first for instant feedback, LLM handles ambiguous cases',
+				archNotes:
+					'FlatList with virtualization for performance. Optimistic updates for perceived speed. AsyncStorage for offline cache.',
 				verifyCriteria: [
-					'50-note brain dump classifies in <30s',
-					'No 429 errors from API',
-					'Heuristic handles 60%+ of common types'
+					'List renders 500 tasks without jank',
+					'Swipe-to-complete works on both platforms',
+					'Offline mode shows cached tasks'
 				],
 				complexity: 'high',
 				contextBundle: []
@@ -484,230 +477,236 @@ export async function seedDemo(storage: StorageAdapter, projectId: string) {
 			positionX: 340,
 			positionY: 60
 		},
+
+		// Team Collaboration phases
 		{
-			_key: 'phase-edge-inference',
+			_key: 'phase-sharing',
 			type: 'phase',
 			layer: 2,
 			projectId,
-			title: 'Phase 3: LLM edge inference',
-			body: body(
-				'Pairwise comparison with batching and caching. Connector runs in background, presents inferred edges for accept/dismiss.'
-			),
-			status: 'draft',
+			title: 'Phase 1: Sharing & Permissions',
+			body: body('Team workspaces, invite flow, role-based access (admin/member/viewer).'),
+			status: 'active',
 			payload: {
-				objective:
-					'Infer semantic edges between notes using embedding similarity and LLM pairwise comparison',
+				objective: 'Let teams share task boards with proper access control',
 				fileChanges: [
-					{ path: 'src/lib/agents/edgeInference.ts', action: 'create' },
-					{ path: 'src/lib/components/EdgeAcceptUI.svelte', action: 'create' }
+					{ path: 'server/models/workspace.ts', action: 'create' },
+					{ path: 'server/routes/invites.ts', action: 'create' }
 				],
 				archNotes:
-					'Fan-in pattern: embedding cache and pairwise engine must both complete before edge UI can render',
+					'Workspace-scoped permissions. Invite via email link. Roles stored in junction table.',
 				verifyCriteria: [
-					'Inferred edges appear within 10s for 20 notes',
-					'Accept/dismiss persists edge decision',
-					'Cached embeddings skip API calls'
+					'Invite link creates pending membership',
+					'Viewer cannot edit tasks',
+					'Admin can manage members'
+				],
+				complexity: 'med',
+				contextBundle: []
+			},
+			positionX: 60,
+			positionY: 60
+		},
+		{
+			_key: 'phase-slack',
+			type: 'phase',
+			layer: 2,
+			projectId,
+			title: 'Phase 2: Slack Integration',
+			body: body('/taskflow slash command, task creation from Slack, notification forwarding.'),
+			status: 'draft',
+			payload: {
+				objective: 'Let users create and manage tasks without leaving Slack',
+				fileChanges: [
+					{ path: 'server/integrations/slack.ts', action: 'create' },
+					{ path: 'server/routes/slack-webhook.ts', action: 'create' }
+				],
+				archNotes:
+					'Slack Bolt SDK for slash commands. Webhook endpoint for interactive messages. OAuth2 for workspace install.',
+				verifyCriteria: [
+					'/taskflow create works in any channel',
+					'Task updates post to linked channel',
+					'OAuth install flow completes'
 				],
 				complexity: 'high',
 				contextBundle: []
 			},
-			positionX: 620,
+			positionX: 340,
 			positionY: 60
 		},
+
+		// Onboarding phases
 		{
-			_key: 'phase-zone-shell',
+			_key: 'phase-import',
 			type: 'phase',
 			layer: 2,
 			projectId,
-			title: 'Phase 1: Zone shell & sidebar',
-			body: body('Zone store, ZoneSidebar component, refactor +page.svelte to zone router.'),
-			status: 'done',
+			title: 'Phase 1: Import Pipeline',
+			body: body('Trello API integration, board/card mapping, progress indicator.'),
+			status: 'draft',
 			payload: {
-				objective:
-					'Create the three-zone navigation shell so users can switch between Notes, Planning, and Docs',
+				objective: 'One-click import from Trello so users start with their existing tasks',
 				fileChanges: [
-					{ path: 'src/lib/stores/zone.svelte.ts', action: 'create' },
-					{ path: 'src/lib/components/ZoneSidebar.svelte', action: 'create' }
+					{ path: 'server/integrations/trello.ts', action: 'create' },
+					{ path: 'mobile/screens/Import.tsx', action: 'create' }
 				],
-				archNotes:
-					'Three-zone architecture uses a simple string-state store. Each zone is a top-level Svelte component receiving projectId. Zone switching is instant because all zones share the same reactive node store — no data reload needed.',
+				archNotes: 'Trello REST API with OAuth1. Map boards→projects, lists→statuses, cards→tasks.',
 				verifyCriteria: [
-					'Clicking zone icon switches view',
-					'Active zone persists across page reloads'
+					'OAuth flow connects Trello account',
+					'100-card board imports in <30s',
+					'Labels preserved as tags'
+				],
+				complexity: 'med',
+				contextBundle: []
+			},
+			positionX: 60,
+			positionY: 60
+		},
+		{
+			_key: 'phase-fre',
+			type: 'phase',
+			layer: 2,
+			projectId,
+			title: 'Phase 2: First-Run Experience',
+			body: body('Guided onboarding flow, sample project, contextual tooltips.'),
+			status: 'draft',
+			payload: {
+				objective: 'Eliminate the empty-state problem — every new user sees value in 60 seconds',
+				fileChanges: [
+					{ path: 'mobile/screens/Onboarding.tsx', action: 'create' },
+					{ path: 'mobile/components/Tooltip.tsx', action: 'create' }
+				],
+				archNotes: 'Step-based onboarding stored in user preferences. Skip-able but sticky.',
+				verifyCriteria: [
+					'New user sees guided flow on first launch',
+					'Sample project created with 5 tasks',
+					'Can skip and return later'
 				],
 				complexity: 'low',
 				contextBundle: []
 			},
-			positionX: 60,
-			positionY: 60
-		},
-		{
-			_key: 'phase-note-chat',
-			type: 'phase',
-			layer: 2,
-			projectId,
-			title: 'Phase 2: Note AI chat panel',
-			body: body(
-				'NoteChatPanel with multi-turn OpenAI chat, chat history persisted in node payload, system prompt with project context.'
-			),
-			status: 'done',
-			payload: {
-				objective: 'Enable AI-assisted note development through multi-turn chat with context',
-				fileChanges: [{ path: 'src/lib/components/NodeChatModal.svelte', action: 'create' }],
-				archNotes: 'Chat history stored in node payload.chatHistory array',
-				verifyCriteria: [
-					'Chat history persists across modal close/reopen',
-					'System prompt includes project context'
-				],
-				complexity: 'med',
-				contextBundle: []
-			},
 			positionX: 340,
 			positionY: 60
 		},
-		{
-			_key: 'phase-planning-hierarchy',
-			type: 'phase',
-			layer: 2,
-			projectId,
-			title: 'Phase 3: Planning hierarchy drill-down',
-			body: body(
-				'PlanningNav store, PlanningBreadcrumb, scoped Canvas/Kanban/Roadmap views at each level.'
-			),
-			status: 'done',
-			payload: {
-				objective:
-					'Let users drill into feature→epic→phase→ticket hierarchy with breadcrumb navigation',
-				fileChanges: [
-					{ path: 'src/lib/stores/planningNav.svelte.ts', action: 'create' },
-					{ path: 'src/lib/components/PlanningBreadcrumb.svelte', action: 'create' }
-				],
-				archNotes: 'Nav stack pattern — push on drill-down, pop on breadcrumb click',
-				verifyCriteria: ['Breadcrumb shows full path', 'Back navigation works at every level'],
-				complexity: 'med',
-				contextBundle: []
-			},
-			positionX: 620,
-			positionY: 60
-		},
 
 		// ═══════════════════════════════════════════════════════════
-		// PLANNING ZONE — L1 Tickets (children of phases)
+		// PLANNING ZONE — L1 Tickets
 		// ═══════════════════════════════════════════════════════════
 
-		// --- Phase 1: Provider Registry tickets (all done, all parallel) ---
+		// --- Data Model & API tickets ---
 		{
-			_key: 'ticket-provider-registry',
+			_key: 'ticket-schema',
 			type: 'ticket',
 			layer: 1,
 			projectId,
-			title: 'Provider registry singleton',
+			title: 'Design PostgreSQL schema for tasks and projects',
 			body: body(
-				'Create a singleton registry that maps capabilities to provider configs. Support OpenAI and Anthropic initially.'
+				'Tables: projects, tasks, users, workspace_members. Tasks have title, description, status, assignee, due_date, priority.'
 			),
 			status: 'done',
 			payload: {
-				intent: 'Centralize API provider configuration so all AI features share one registry',
-				filePaths: [{ repoId: 'atlas', path: 'src/lib/agents/providers.ts' }],
+				intent: 'Define the core data model that all features build on',
+				filePaths: [{ repoId: 'taskflow', path: 'server/prisma/schema.prisma' }],
 				acceptanceCriteria: [
-					'Registry returns correct provider for each capability',
-					'Adding a new provider requires only config'
+					'Migration creates all tables',
+					'Indexes on frequently queried columns',
+					'Foreign keys enforce referential integrity'
 				],
 				promptPayload: '',
-				completedAt: new Date(Date.now() - 2 * DAY_MS).toISOString()
+				completedAt: new Date(Date.now() - 4 * DAY_MS).toISOString()
 			},
 			positionX: 60,
 			positionY: 60
 		},
 		{
-			_key: 'ticket-callmodel',
+			_key: 'ticket-crud-api',
 			type: 'ticket',
 			layer: 1,
 			projectId,
-			title: 'callModel abstraction',
+			title: 'Implement task CRUD REST endpoints',
 			body: body(
-				'Unified callModel() function that routes to the correct provider based on capability type.'
+				'GET/POST/PUT/DELETE for /api/tasks. Pagination, filtering by status/assignee. Input validation with Zod.'
 			),
 			status: 'done',
 			payload: {
-				intent: 'Provide a single function for all LLM calls regardless of provider',
-				filePaths: [{ repoId: 'atlas', path: 'src/lib/agents/providers.ts' }],
+				intent: 'Provide the API layer for all task operations',
+				filePaths: [{ repoId: 'taskflow', path: 'server/routes/tasks.ts' }],
 				acceptanceCriteria: [
-					'callModel resolves for classification capability',
-					'callModel resolves for embedding capability'
+					'All CRUD operations work',
+					'Pagination returns correct pages',
+					'Invalid input returns 400 with details'
 				],
 				promptPayload: '',
-				completedAt: new Date(Date.now() - 2 * DAY_MS).toISOString()
+				completedAt: new Date(Date.now() - 3 * DAY_MS).toISOString()
 			},
 			positionX: 200,
 			positionY: 60
 		},
 		{
-			_key: 'ticket-api-keys-ui',
+			_key: 'ticket-auth',
 			type: 'ticket',
 			layer: 1,
 			projectId,
-			title: 'Settings UI for API keys',
+			title: 'JWT authentication middleware',
 			body: body(
-				'Settings panel where users enter API keys for each provider. Keys stored in localStorage.'
+				'Login/register endpoints, JWT with 15-min access + 7-day refresh tokens, middleware for protected routes.'
 			),
 			status: 'done',
 			payload: {
-				intent: 'Let users configure their own API keys without environment variables',
-				filePaths: [],
+				intent: 'Secure the API so only authenticated users can access their tasks',
+				filePaths: [{ repoId: 'taskflow', path: 'server/middleware/auth.ts' }],
 				acceptanceCriteria: [
-					'Keys persist in localStorage',
-					'Masking input shows/hides key',
-					'Invalid key shows error state'
+					'Login returns access + refresh tokens',
+					'Expired access token returns 401',
+					'Refresh endpoint issues new access token'
 				],
 				promptPayload: '',
-				completedAt: new Date(Date.now() - 2 * DAY_MS).toISOString()
+				completedAt: new Date(Date.now() - 3 * DAY_MS).toISOString()
 			},
 			positionX: 340,
 			positionY: 60
 		},
 
-		// --- Phase 2: Classification tickets (dependency chain) ---
+		// --- Mobile UI tickets ---
 		{
-			_key: 'ticket-heuristic',
+			_key: 'ticket-task-list',
 			type: 'ticket',
 			layer: 1,
 			projectId,
-			title: 'Heuristic classifier',
+			title: 'Task list screen with FlatList',
 			body: body(
-				'Keyword/prefix matching for common note types. Fires before LLM call for instant feedback.'
+				'Virtualized list with pull-to-refresh, swipe actions (complete, delete), and floating create button.'
 			),
-			status: 'done',
+			status: 'active',
 			payload: {
-				intent: 'Provide instant classification feedback while LLM processes ambiguous notes',
-				filePaths: [{ repoId: 'atlas', path: 'src/lib/agents/classifier.ts' }],
+				intent: 'Build the primary screen users interact with most',
+				filePaths: [{ repoId: 'taskflow', path: 'mobile/screens/TaskList.tsx' }],
 				acceptanceCriteria: [
-					'Classifies "Decision:" prefix as decision type',
-					'Returns confidence score',
-					'Falls through to LLM for low-confidence'
+					'Renders 500 tasks without frame drops',
+					'Swipe left to complete, right to delete',
+					'Pull-to-refresh syncs from server'
 				],
-				promptPayload: '',
-				completedAt: new Date(Date.now() - 1 * DAY_MS).toISOString()
+				promptPayload: ''
 			},
 			positionX: 60,
 			positionY: 60
 		},
 		{
-			_key: 'ticket-llm-classify',
+			_key: 'ticket-task-detail',
 			type: 'ticket',
 			layer: 1,
 			projectId,
-			title: 'LLM classifier integration',
+			title: 'Task detail and edit screen',
 			body: body(
-				'Wire callModel to classify notes that the heuristic is uncertain about. Parse structured LLM response into type + confidence.'
+				'Full task view with edit mode. Fields: title, description, status, assignee, due date, priority, tags.'
 			),
 			status: 'active',
 			payload: {
-				intent: 'Handle ambiguous notes that heuristics cannot confidently classify',
-				filePaths: [{ repoId: 'atlas', path: 'src/lib/agents/classifier.ts' }],
+				intent: 'Let users view and edit all task properties',
+				filePaths: [{ repoId: 'taskflow', path: 'mobile/screens/TaskDetail.tsx' }],
 				acceptanceCriteria: [
-					'LLM classification matches expected type for 90%+ test cases',
-					'Structured response parsing handles edge cases'
+					'All fields editable',
+					'Save persists to server immediately',
+					'Back button shows updated list'
 				],
 				promptPayload: ''
 			},
@@ -715,42 +714,45 @@ export async function seedDemo(storage: StorageAdapter, projectId: string) {
 			positionY: 60
 		},
 		{
-			_key: 'ticket-batch-classify',
+			_key: 'ticket-offline',
 			type: 'ticket',
 			layer: 1,
 			projectId,
-			title: 'Batch classification with rate limiting',
+			title: 'Offline mode with AsyncStorage cache',
 			body: body(
-				'Process up to 10 notes per batch, 2s delay between batches, cache results in payload.'
-			),
-			status: 'active',
-			payload: {
-				intent: 'Prevent API rate limiting while classifying large brain dumps',
-				filePaths: [{ repoId: 'atlas', path: 'src/lib/agents/classifier.ts' }],
-				acceptanceCriteria: ['50-note brain dump classifies in <30s', 'No 429 errors from API'],
-				promptPayload: ''
-			},
-			positionX: 340,
-			positionY: 60
-		},
-		{
-			_key: 'ticket-classify-ui',
-			type: 'ticket',
-			layer: 1,
-			projectId,
-			title: 'Classification result UI',
-			body: body(
-				'Show classification results inline on note cards — type badge with confidence indicator and option to override.'
+				'Cache task list locally. Queue mutations when offline. Sync queue on reconnect with conflict resolution.'
 			),
 			status: 'draft',
 			payload: {
-				intent:
-					'Give users visibility into AI classification decisions and ability to correct them',
-				filePaths: [],
+				intent: 'Ensure the app works in subway/airplane/poor connectivity scenarios',
+				filePaths: [{ repoId: 'taskflow', path: 'mobile/lib/offlineSync.ts' }],
 				acceptanceCriteria: [
-					'Shows type badge with confidence %',
-					'Click badge opens type override dropdown',
-					'Override persists to node'
+					'App shows cached tasks when offline',
+					'Mutations queue and replay on reconnect',
+					'Server-wins conflict resolution'
+				],
+				promptPayload: ''
+			},
+			positionX: 340,
+			positionY: 60
+		},
+		{
+			_key: 'ticket-push',
+			type: 'ticket',
+			layer: 1,
+			projectId,
+			title: 'Push notifications via Firebase',
+			body: body(
+				'FCM setup, notification on task assignment, due-date reminders, deep link to task detail.'
+			),
+			status: 'draft',
+			payload: {
+				intent: 'Keep users engaged with timely task notifications',
+				filePaths: [{ repoId: 'taskflow', path: 'server/services/notifications.ts' }],
+				acceptanceCriteria: [
+					'Notification sent on task assignment',
+					'Due-date reminder 1 hour before',
+					'Tap notification opens task'
 				],
 				promptPayload: ''
 			},
@@ -758,23 +760,22 @@ export async function seedDemo(storage: StorageAdapter, projectId: string) {
 			positionY: 60
 		},
 
-		// --- Phase 3: Edge Inference tickets (fan-in pattern) ---
+		// --- Sharing & Permissions tickets ---
 		{
-			_key: 'ticket-embed-cache',
+			_key: 'ticket-workspace',
 			type: 'ticket',
 			layer: 1,
 			projectId,
-			title: 'Embedding cache in IndexedDB',
-			body: body(
-				'Store embedding vectors per-node. Only re-embed when title or body changes. Expire after 7 days.'
-			),
-			status: 'draft',
+			title: 'Workspace creation and member management',
+			body: body('Create workspace, invite members by email, assign roles (admin/member/viewer).'),
+			status: 'active',
 			payload: {
-				intent: 'Reduce embedding API calls by caching vectors locally',
-				filePaths: [],
+				intent: 'Enable team-based task organization',
+				filePaths: [{ repoId: 'taskflow', path: 'server/models/workspace.ts' }],
 				acceptanceCriteria: [
-					'Second edge-inference run on same notes uses 0 API calls',
-					'Cache invalidates when node content changes'
+					'Create workspace returns workspace ID',
+					'Invite sends email with join link',
+					'Role change takes effect immediately'
 				],
 				promptPayload: ''
 			},
@@ -782,74 +783,72 @@ export async function seedDemo(storage: StorageAdapter, projectId: string) {
 			positionY: 60
 		},
 		{
-			_key: 'ticket-pairwise',
+			_key: 'ticket-rbac',
 			type: 'ticket',
 			layer: 1,
 			projectId,
-			title: 'Pairwise comparison engine',
+			title: 'Role-based access control middleware',
 			body: body(
-				'Compare embedding vectors pairwise, filter by cosine similarity threshold, batch LLM confirmation for top candidates.'
+				'Middleware that checks user role before allowing task mutations. Viewers can read, members can edit, admins can manage.'
 			),
 			status: 'draft',
 			payload: {
-				intent: 'Efficiently find semantically related note pairs for edge inference',
-				filePaths: [],
+				intent: 'Prevent unauthorized actions in shared workspaces',
+				filePaths: [{ repoId: 'taskflow', path: 'server/middleware/rbac.ts' }],
 				acceptanceCriteria: [
-					'Cosine similarity threshold filters 80%+ of pairs',
-					'Batched LLM confirmation for remaining pairs',
-					'Results cached per pair hash'
+					'Viewer gets 403 on POST/PUT/DELETE',
+					'Member can create and edit own tasks',
+					'Admin can delete any task'
 				],
 				promptPayload: ''
 			},
 			positionX: 200,
 			positionY: 60
 		},
-		{
-			_key: 'ticket-edge-ui',
-			type: 'ticket',
-			layer: 1,
-			projectId,
-			title: 'Edge accept/dismiss UI',
-			body: body(
-				'Present inferred edges to user with accept/dismiss buttons. Accepted edges become permanent, dismissed are suppressed.'
-			),
-			status: 'draft',
-			payload: {
-				intent: 'Let users curate AI-inferred edges with minimal friction',
-				filePaths: [],
-				acceptanceCriteria: [
-					'Inferred edges shown in a review panel',
-					'Accept creates edge in storage',
-					'Dismiss suppresses re-suggestion'
-				],
-				promptPayload: ''
-			},
-			positionX: 340,
-			positionY: 60
-		},
 
-		// --- Zones epic tickets ---
+		// --- Import Pipeline tickets ---
 		{
-			_key: 'ticket-integrate-ui',
+			_key: 'ticket-trello-oauth',
 			type: 'ticket',
 			layer: 1,
 			projectId,
-			title: 'Build "Integrate into plan" confirmation dialog',
-			body: body(
-				'When user clicks Integrate, show proposed actions (create epic, add ticket, link to intent) with confirm/reject per action.'
-			),
+			title: 'Trello OAuth flow and board listing',
+			body: body('OAuth1 token exchange, list user boards with card counts, store token securely.'),
 			status: 'draft',
 			payload: {
-				intent: 'Let users review AI integration proposals before executing',
-				filePaths: [],
+				intent: "Connect to a user's Trello account to enable import",
+				filePaths: [{ repoId: 'taskflow', path: 'server/integrations/trello.ts' }],
 				acceptanceCriteria: [
-					'Shows preview of all proposed node creates/updates',
-					'User can reject individual actions',
-					'Executes approved actions atomically'
+					'OAuth redirect flow works',
+					'Board list shows all user boards',
+					'Token stored encrypted'
 				],
 				promptPayload: ''
 			},
 			positionX: 60,
+			positionY: 60
+		},
+		{
+			_key: 'ticket-trello-import',
+			type: 'ticket',
+			layer: 1,
+			projectId,
+			title: 'Trello card-to-task mapper',
+			body: body(
+				'Map Trello cards to TaskFlow tasks: title, description, labels→tags, due dates, checklists→subtasks.'
+			),
+			status: 'draft',
+			payload: {
+				intent: 'Convert Trello data into TaskFlow format preserving all metadata',
+				filePaths: [{ repoId: 'taskflow', path: 'server/integrations/trello-mapper.ts' }],
+				acceptanceCriteria: [
+					'Card title and description preserved',
+					'Labels become tags',
+					'Due dates transfer correctly'
+				],
+				promptPayload: ''
+			},
+			positionX: 200,
 			positionY: 60
 		}
 	];
@@ -865,35 +864,29 @@ export async function seedDemo(storage: StorageAdapter, projectId: string) {
 
 	// ── Wire parent IDs ────────────────────────────────────────
 	const parentLinks: [string, string][] = [
-		// Epics → Intents
-		['epic-canvas', 'intent-mvp'],
-		['epic-classifier', 'intent-mvp'],
-		['epic-zones', 'intent-mvp'],
-		['epic-integrate', 'intent-mvp'],
-		['epic-cartographer', 'intent-github'],
-		['epic-docker', 'intent-collab'],
+		// Epics → Feature
+		['epic-task-engine', 'feature-mvp'],
+		['epic-collab', 'feature-mvp'],
+		['epic-onboard', 'feature-mvp'],
 		// Phases → Epics
-		['phase-provider-registry', 'epic-classifier'],
-		['phase-heuristic', 'epic-classifier'],
-		['phase-edge-inference', 'epic-classifier'],
-		['phase-zone-shell', 'epic-zones'],
-		['phase-note-chat', 'epic-zones'],
-		['phase-planning-hierarchy', 'epic-zones'],
-		// Tickets → Phases (Phase 1: Provider Registry — all parallel)
-		['ticket-provider-registry', 'phase-provider-registry'],
-		['ticket-callmodel', 'phase-provider-registry'],
-		['ticket-api-keys-ui', 'phase-provider-registry'],
-		// Tickets → Phases (Phase 2: Classification — dependency chain)
-		['ticket-heuristic', 'phase-heuristic'],
-		['ticket-llm-classify', 'phase-heuristic'],
-		['ticket-batch-classify', 'phase-heuristic'],
-		['ticket-classify-ui', 'phase-heuristic'],
-		// Tickets → Phases (Phase 3: Edge Inference — fan-in)
-		['ticket-embed-cache', 'phase-edge-inference'],
-		['ticket-pairwise', 'phase-edge-inference'],
-		['ticket-edge-ui', 'phase-edge-inference'],
-		// Tickets → Phases (Zones epic)
-		['ticket-integrate-ui', 'phase-note-chat']
+		['phase-data-api', 'epic-task-engine'],
+		['phase-mobile-ui', 'epic-task-engine'],
+		['phase-sharing', 'epic-collab'],
+		['phase-slack', 'epic-collab'],
+		['phase-import', 'epic-onboard'],
+		['phase-fre', 'epic-onboard'],
+		// Tickets → Phases
+		['ticket-schema', 'phase-data-api'],
+		['ticket-crud-api', 'phase-data-api'],
+		['ticket-auth', 'phase-data-api'],
+		['ticket-task-list', 'phase-mobile-ui'],
+		['ticket-task-detail', 'phase-mobile-ui'],
+		['ticket-offline', 'phase-mobile-ui'],
+		['ticket-push', 'phase-mobile-ui'],
+		['ticket-workspace', 'phase-sharing'],
+		['ticket-rbac', 'phase-sharing'],
+		['ticket-trello-oauth', 'phase-import'],
+		['ticket-trello-import', 'phase-import']
 	];
 	for (const [child, parent] of parentLinks) {
 		const childId = idMap.get(child);
@@ -907,8 +900,8 @@ export async function seedDemo(storage: StorageAdapter, projectId: string) {
 	const edges: (CreateEdge & { _src: string; _tgt: string })[] = [
 		// Notes ↔ Notes relationships
 		{
-			_src: 'insight-brain-dump',
-			_tgt: 'note-initial',
+			_src: 'insight-simplicity',
+			_tgt: 'goal-launch',
 			sourceId: '',
 			targetId: '',
 			relationType: 'supports',
@@ -916,8 +909,8 @@ export async function seedDemo(storage: StorageAdapter, projectId: string) {
 			source: 'ai'
 		},
 		{
-			_src: 'risk-llm-cost',
-			_tgt: 'question-embedding',
+			_src: 'risk-both-platforms',
+			_tgt: 'decision-rn',
 			sourceId: '',
 			targetId: '',
 			relationType: 'refines',
@@ -925,17 +918,17 @@ export async function seedDemo(storage: StorageAdapter, projectId: string) {
 			source: 'ai'
 		},
 		{
-			_src: 'hypothesis-ai-edges',
-			_tgt: 'question-embedding',
+			_src: 'hypothesis-onboard',
+			_tgt: 'problem-churn',
 			sourceId: '',
 			targetId: '',
 			relationType: 'supports',
-			weight: 0.7,
+			weight: 0.9,
 			source: 'ai'
 		},
 		{
-			_src: 'idea-three-zones',
-			_tgt: 'note-initial',
+			_src: 'idea-import',
+			_tgt: 'hypothesis-onboard',
 			sourceId: '',
 			targetId: '',
 			relationType: 'refines',
@@ -943,36 +936,73 @@ export async function seedDemo(storage: StorageAdapter, projectId: string) {
 			source: 'ai'
 		},
 		{
-			_src: 'constraint-no-server',
-			_tgt: 'idea-export-claude',
+			_src: 'constraint-runway',
+			_tgt: 'decision-mvp-scope',
 			sourceId: '',
 			targetId: '',
 			relationType: 'supports',
+			weight: 0.7,
+			source: 'ai'
+		},
+		{
+			_src: 'insight-slack',
+			_tgt: 'bet-mobile-first',
+			sourceId: '',
+			targetId: '',
+			relationType: 'supports',
+			weight: 0.8,
+			source: 'ai'
+		},
+		{
+			_src: 'risk-android',
+			_tgt: 'constraint-team',
+			sourceId: '',
+			targetId: '',
+			relationType: 'refines',
 			weight: 0.6,
 			source: 'ai'
 		},
+		// Conversation tree edges (parent → child via 'refines'/'supports')
 		{
-			_src: 'problem-dedup',
-			_tgt: 'insight-brain-dump',
+			_src: 'idea-smart-suggest',
+			_tgt: 'conv-question',
 			sourceId: '',
 			targetId: '',
-			relationType: 'contradicts',
-			weight: 0.5,
-			source: 'ai'
+			relationType: 'refines',
+			weight: 1.0,
+			source: 'human'
 		},
 		{
-			_src: 'goal-integrate-flow',
-			_tgt: 'idea-three-zones',
+			_src: 'conv-question',
+			_tgt: 'conv-insight-history',
 			sourceId: '',
 			targetId: '',
 			relationType: 'refines',
 			weight: 0.9,
 			source: 'ai'
 		},
-		// Plan nodes → source notes (refines edges for lineage tracing)
 		{
-			_src: 'epic-zones',
-			_tgt: 'idea-three-zones',
+			_src: 'conv-question',
+			_tgt: 'conv-insight-context',
+			sourceId: '',
+			targetId: '',
+			relationType: 'refines',
+			weight: 0.9,
+			source: 'ai'
+		},
+		{
+			_src: 'conv-insight-context',
+			_tgt: 'conv-decision',
+			sourceId: '',
+			targetId: '',
+			relationType: 'supports',
+			weight: 0.95,
+			source: 'human'
+		},
+		// Plan nodes → source notes (lineage)
+		{
+			_src: 'epic-task-engine',
+			_tgt: 'decision-mvp-scope',
 			sourceId: '',
 			targetId: '',
 			relationType: 'refines',
@@ -980,8 +1010,8 @@ export async function seedDemo(storage: StorageAdapter, projectId: string) {
 			source: 'human'
 		},
 		{
-			_src: 'epic-classifier',
-			_tgt: 'hypothesis-ai-edges',
+			_src: 'epic-onboard',
+			_tgt: 'hypothesis-onboard',
 			sourceId: '',
 			targetId: '',
 			relationType: 'refines',
@@ -989,27 +1019,18 @@ export async function seedDemo(storage: StorageAdapter, projectId: string) {
 			source: 'human'
 		},
 		{
-			_src: 'epic-canvas',
-			_tgt: 'note-initial',
+			_src: 'epic-collab',
+			_tgt: 'insight-slack',
 			sourceId: '',
 			targetId: '',
 			relationType: 'refines',
 			weight: 1.0,
 			source: 'human'
 		},
+		// Dependency edges
 		{
-			_src: 'phase-provider-registry',
-			_tgt: 'decision-svelte5',
-			sourceId: '',
-			targetId: '',
-			relationType: 'refines',
-			weight: 1.0,
-			source: 'human'
-		},
-		// Dependency (blocks) edges — within-phase ticket dependencies
-		{
-			_src: 'ticket-llm-classify',
-			_tgt: 'ticket-batch-classify',
+			_src: 'phase-data-api',
+			_tgt: 'phase-mobile-ui',
 			sourceId: '',
 			targetId: '',
 			relationType: 'blocks',
@@ -1017,8 +1038,8 @@ export async function seedDemo(storage: StorageAdapter, projectId: string) {
 			source: 'human'
 		},
 		{
-			_src: 'ticket-llm-classify',
-			_tgt: 'ticket-classify-ui',
+			_src: 'ticket-schema',
+			_tgt: 'ticket-crud-api',
 			sourceId: '',
 			targetId: '',
 			relationType: 'blocks',
@@ -1026,36 +1047,8 @@ export async function seedDemo(storage: StorageAdapter, projectId: string) {
 			source: 'human'
 		},
 		{
-			_src: 'ticket-embed-cache',
-			_tgt: 'ticket-edge-ui',
-			sourceId: '',
-			targetId: '',
-			relationType: 'blocks',
-			weight: 1.0,
-			source: 'human'
-		},
-		{
-			_src: 'ticket-pairwise',
-			_tgt: 'ticket-edge-ui',
-			sourceId: '',
-			targetId: '',
-			relationType: 'blocks',
-			weight: 1.0,
-			source: 'human'
-		},
-		// Phase-level sequential ordering
-		{
-			_src: 'phase-provider-registry',
-			_tgt: 'phase-heuristic',
-			sourceId: '',
-			targetId: '',
-			relationType: 'blocks',
-			weight: 1.0,
-			source: 'human'
-		},
-		{
-			_src: 'phase-heuristic',
-			_tgt: 'phase-edge-inference',
+			_src: 'ticket-crud-api',
+			_tgt: 'ticket-task-list',
 			sourceId: '',
 			targetId: '',
 			relationType: 'blocks',
@@ -1064,8 +1057,8 @@ export async function seedDemo(storage: StorageAdapter, projectId: string) {
 		},
 		// Planning hierarchy edges
 		{
-			_src: 'epic-canvas',
-			_tgt: 'intent-mvp',
+			_src: 'epic-task-engine',
+			_tgt: 'feature-mvp',
 			sourceId: '',
 			targetId: '',
 			relationType: 'implements',
@@ -1073,8 +1066,8 @@ export async function seedDemo(storage: StorageAdapter, projectId: string) {
 			source: 'human'
 		},
 		{
-			_src: 'epic-classifier',
-			_tgt: 'intent-mvp',
+			_src: 'epic-collab',
+			_tgt: 'feature-mvp',
 			sourceId: '',
 			targetId: '',
 			relationType: 'implements',
@@ -1082,26 +1075,8 @@ export async function seedDemo(storage: StorageAdapter, projectId: string) {
 			source: 'human'
 		},
 		{
-			_src: 'epic-zones',
-			_tgt: 'intent-mvp',
-			sourceId: '',
-			targetId: '',
-			relationType: 'implements',
-			weight: 1.0,
-			source: 'human'
-		},
-		{
-			_src: 'epic-cartographer',
-			_tgt: 'intent-github',
-			sourceId: '',
-			targetId: '',
-			relationType: 'implements',
-			weight: 1.0,
-			source: 'human'
-		},
-		{
-			_src: 'epic-docker',
-			_tgt: 'intent-collab',
+			_src: 'epic-onboard',
+			_tgt: 'feature-mvp',
 			sourceId: '',
 			targetId: '',
 			relationType: 'implements',

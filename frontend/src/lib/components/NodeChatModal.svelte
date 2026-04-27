@@ -1,27 +1,37 @@
 <script lang="ts">
-	import { callChat, type ChatMessage } from '$lib/agents/providers';
-	import {
-		parseChatResponse,
-		responseFormatInstructions,
-		type ChatResponse
-	} from '$lib/agents/chat-response';
+	import { callChat, hasProviders, type ChatMessage } from '$lib/agents/providers';
+	import { parseChatResponse, responseFormatInstructions } from '$lib/agents/chat-response';
 	import { getGlobalContext } from '$lib/stores/globalContext.svelte';
-	import { getProjectNodes } from '$lib/stores/nodes.svelte';
+	import { getProjectNodes, getAllEdges as getProjectEdges } from '$lib/stores/nodes.svelte';
+	import { walkThread, buildThreadPrompt } from '$lib/agents/thread-context';
+	import { addInboxItem } from '$lib/stores/inboxStore.svelte';
 	import { extractBodyText, getNodeTypeConfig, NODE_TYPES } from '$lib/node-types';
 	import { savePayload, tagColor, type ChatHistoryEntry } from '$lib/utils/chat-helpers';
 	import ChatMessages from './ChatMessages.svelte';
 	import ChatInput from './ChatInput.svelte';
+	import ProposalPanel from './ProposalPanel.svelte';
 	import type { Node } from '$lib/storage/adapter';
+	import type { Proposal } from '$lib/proposals';
 
 	interface Props {
 		node: Node;
 		projectId: string;
 		layout?: 'chat-first' | 'body-first';
+		autoIntegrate?: boolean;
+		onIntegrateStarted?: () => void;
 		onUpdateNode: (id: string, patch: Partial<Node>) => void;
 		onClose: () => void;
 	}
 
-	let { node, projectId, layout = 'chat-first', onUpdateNode, onClose }: Props = $props();
+	let {
+		node,
+		projectId,
+		layout = 'chat-first',
+		autoIntegrate = false,
+		onIntegrateStarted,
+		onUpdateNode,
+		onClose
+	}: Props = $props();
 
 	// Chat state
 	let chatHistory = $derived<ChatHistoryEntry[]>(
@@ -29,6 +39,40 @@
 	);
 	let userInput = $state('');
 	let sending = $state(false);
+
+	// Mounted guard — prevents state updates after component unmounts
+	let mounted = true;
+	$effect(() => {
+		return () => {
+			mounted = false;
+		};
+	});
+
+	// Auto-trigger integrate when opened with autoIntegrate=true
+	$effect(() => {
+		if (autoIntegrate && !sending) {
+			onIntegrateStarted?.();
+			handleIntegrate();
+		}
+	});
+
+	// Active proposals — from the latest assistant message, excluding auto-applied and inbox-routed
+	const PLANNING_TYPES = ['feature', 'epic', 'phase', 'ticket', 'goal', 'initiative'];
+	let activeProposals = $derived.by((): Proposal[] => {
+		for (let i = chatHistory.length - 1; i >= 0; i--) {
+			if (chatHistory[i].role === 'assistant' && chatHistory[i].proposals?.length) {
+				return chatHistory[i].proposals!.filter((p) => {
+					// Filter out auto-applied update_node on current node
+					if (p.op?.type === 'update_node' && p.op.nodeId === node.id) return false;
+					// Filter out planning-type create_node (sent to inbox)
+					if (p.op?.type === 'create_node' && PLANNING_TYPES.includes(p.op.data.nodeType))
+						return false;
+					return true;
+				});
+			}
+		}
+		return [];
+	});
 
 	// Card preview state
 	let isEditingTitle = $state(false);
@@ -61,32 +105,31 @@
 
 	// --- Structured response handling ---
 
-	function applyChatResponse(resp: ChatResponse) {
-		const patch: Partial<Node> = {};
-		if (resp.cardMeta?.title) patch.title = resp.cardMeta.title;
-		if (resp.cardMeta?.type) patch.type = resp.cardMeta.type;
-		if (resp.cardBody) {
-			patch.body = {
-				type: 'doc',
-				content: [{ type: 'paragraph', content: [{ type: 'text', text: resp.cardBody }] }]
-			};
-		}
+	function autoApplyCurrentNodeProposals(proposals: Proposal[]) {
+		// Auto-apply update_node proposals targeting the current node
+		for (const proposal of proposals) {
+			if (proposal.op.type === 'update_node' && proposal.op.nodeId === node.id) {
+				const changes = proposal.op.changes;
+				const patch: Partial<Node> = {};
 
-		// Merge payload: tags from meta + type-specific fields from cardPayload
-		const payloadMerge: Record<string, unknown> = { ...(node.payload ?? {}) };
-		if (resp.cardMeta?.tags && resp.cardMeta.tags.length > 0) {
-			payloadMerge.tags = resp.cardMeta.tags;
-		}
-		if (resp.cardPayload) {
-			const { chatHistory: _ch, ...rest } = resp.cardPayload;
-			Object.assign(payloadMerge, rest);
-		}
-		if (resp.cardMeta?.tags || resp.cardPayload) {
-			patch.payload = payloadMerge;
-		}
+				if (changes.title) patch.title = changes.title;
+				if (changes.type) patch.type = changes.type;
+				if (changes.status) patch.status = changes.status;
+				if (changes.body) {
+					patch.body = {
+						type: 'doc',
+						content: [{ type: 'paragraph', content: [{ type: 'text', text: changes.body }] }]
+					};
+				}
+				if (changes.payload) {
+					const { chatHistory: _ch, ...rest } = changes.payload;
+					patch.payload = { ...(node.payload ?? {}), ...rest };
+				}
 
-		if (Object.keys(patch).length > 0) {
-			onUpdateNode(node.id, patch);
+				if (Object.keys(patch).length > 0) {
+					onUpdateNode(node.id, patch);
+				}
+			}
 		}
 	}
 
@@ -194,6 +237,7 @@
 		const gc = getGlobalContext();
 		const currentBody = extractBodyText(node.body as Record<string, unknown> | null, 2000);
 		const allNodes = getProjectNodes();
+		const allEdges = getProjectEdges();
 		const plans = allNodes
 			.filter((n) => n.layer === 4)
 			.map((n) => `- ${n.title}`)
@@ -202,14 +246,19 @@
 		const isNew = node.title === 'Untitled' && chatHistory.length === 0;
 		const nodeListing = getProjectNodeListing();
 
-		return `You are a thinking partner helping develop ideas in Atlas, a spatial planning tool.
+		// Build thread context (ancestor chain)
+		const threadChain = walkThread(node.id, allNodes, allEdges);
+		const threadContext = buildThreadPrompt(threadChain);
 
-The user is working on a note titled: "${node.title}"
+		return `You are a thinking partner in Butterfly, a spatial planning tool. Your job is to help explore ideas AND identify distinct threads, sub-topics, questions, and risks that deserve their own cards. When an idea has multiple facets, propose the primary thread as an update to the current note body, and propose separate notes for the rest.
+
+The user is working on a note titled: "${node.title}" (id: ${node.id})
 ${currentBody ? `\nNote content:\n${currentBody}` : ''}
-${gc ? `\nProject context:\n${gc}` : ''}
+${threadContext ? `\n${threadContext}` : ''}
+${gc ? `\nGlobal project context (use this to align your responses):\n${gc}` : ''}
 ${plans ? `\nExisting plans:\n${plans}` : ''}${tagContext}
 
-${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeListing })}`;
+${responseFormatInstructions({ projectId, currentNodeId: node.id, isNew, isPlanningNode: false, nodeListing })}`;
 	}
 
 	// --- Chat ---
@@ -227,9 +276,26 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 		try {
 			const messages: ChatMessage[] = newHistory.map((m) => ({ role: m.role, content: m.content }));
 			const response = await callChat(buildSystemPrompt(), messages);
+			if (!mounted) return;
 
 			if (response) {
-				const resp = parseChatResponse(response.text);
+				const resp = parseChatResponse(response.text, node.id);
+				autoApplyCurrentNodeProposals(resp.proposals);
+
+				// Auto-queue planning-type proposals to inbox
+				const planningTypes = ['feature', 'epic', 'phase', 'ticket', 'goal', 'initiative'];
+				const planningProposals = resp.proposals.filter(
+					(p) => p.op.type === 'create_node' && planningTypes.includes(p.op.data.nodeType)
+				);
+				if (planningProposals.length > 0) {
+					await addInboxItem({
+						projectId,
+						sourceNodeId: node.id,
+						sourceTitle: node.title,
+						proposals: planningProposals,
+						origin: 'llm-suggested'
+					});
+				}
 
 				const entry: ChatHistoryEntry = {
 					role: 'assistant',
@@ -238,9 +304,9 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 				};
 				const withReply = [...newHistory, entry];
 				savePayload(node, { chatHistory: withReply }, onUpdateNode);
-				applyChatResponse(resp);
 			}
 		} catch (e) {
+			if (!mounted) return;
 			console.error('Chat failed:', e);
 			const withError = [
 				...newHistory,
@@ -252,7 +318,7 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 			];
 			savePayload(node, { chatHistory: withError }, onUpdateNode);
 		} finally {
-			sending = false;
+			if (mounted) sending = false;
 		}
 	}
 
@@ -260,8 +326,24 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 
 	async function handleIntegrate() {
 		if (sending) return;
-		const integrationMsg =
-			'Integrate this note into the planning structure. You MUST include a "proposals" array in your JSON response with create_node items for features, epics, and/or tickets that capture the actionable content of this note.';
+
+		if (!hasProviders()) {
+			alert('No AI provider configured. Add an API key in Settings to use Promote.');
+			return;
+		}
+
+		const nodeListing = getProjectNodeListing();
+		const integrationMsg = `Integrate this note into the planning structure.
+
+- Look at the existing plan and identify where this content fits
+- If the note has multiple concerns, break into separate items
+- Avoid duplicating existing items — extend or refine instead
+- Propose features (L4), epics (L3), phases (L2), or tickets (L1) as appropriate
+- Every item must have body content and payload
+
+You MUST include a "proposals" array with create_node items.
+
+${nodeListing}`;
 
 		sending = true;
 		const newHistory = [...chatHistory, { role: 'user' as const, content: integrationMsg }];
@@ -273,20 +355,44 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 				content: m.content
 			}));
 			const response = await callChat(buildSystemPrompt(), messages, 4096);
+			if (!mounted) return;
 
 			if (response) {
-				const resp = parseChatResponse(response.text);
+				const resp = parseChatResponse(response.text, node.id);
+
+				// Auto-apply update_node on current note
+				autoApplyCurrentNodeProposals(resp.proposals);
+
+				// Route remaining proposals to inbox
+				const remaining = resp.proposals.filter(
+					(p) => !(p.op.type === 'update_node' && p.op.nodeId === node.id)
+				);
+				if (remaining.length > 0) {
+					await addInboxItem({
+						projectId,
+						sourceNodeId: node.id,
+						sourceTitle: node.title,
+						proposals: remaining,
+						origin: 'manual'
+					});
+				}
+
+				// Add confirmation to chat
+				const confirmMsg =
+					remaining.length > 0
+						? `${resp.message}\n\n_Sent ${remaining.length} item${remaining.length === 1 ? '' : 's'} to the Planning inbox for review._`
+						: resp.message;
 
 				const entry: ChatHistoryEntry = {
 					role: 'assistant',
-					content: resp.message,
+					content: confirmMsg,
 					...(resp.proposals && resp.proposals.length > 0 ? { proposals: resp.proposals } : {})
 				};
 				const withReply = [...newHistory, entry];
 				savePayload(node, { chatHistory: withReply }, onUpdateNode);
-				applyChatResponse(resp);
 			}
 		} catch (e) {
+			if (!mounted) return;
 			console.error('Integrate failed:', e);
 			const withError = [
 				...newHistory,
@@ -297,7 +403,7 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 			];
 			savePayload(node, { chatHistory: withError }, onUpdateNode);
 		} finally {
-			sending = false;
+			if (mounted) sending = false;
 		}
 	}
 
@@ -326,8 +432,13 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 			<div class="chat-header">
 				<span class="chat-label">Chat</span>
 				<div class="chat-actions">
-					<button class="integrate-btn" onclick={handleIntegrate} disabled={sending}>
-						{sending ? 'Thinking...' : 'Integrate'}
+					<button
+						class="integrate-btn"
+						data-demo="integrate-btn"
+						onclick={handleIntegrate}
+						disabled={sending}
+					>
+						{sending ? 'Thinking...' : 'Promote to Plan'}
 					</button>
 				</div>
 			</div>
@@ -343,8 +454,14 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 			<ChatInput bind:value={userInput} {sending} onSend={handleSend} />
 		</div>
 
-		<!-- Right: Card preview -->
+		<!-- Right: Proposals + Card preview -->
 		<div class="preview-column">
+			{#if activeProposals.length > 0}
+				<div class="proposals-section">
+					<ProposalPanel proposals={activeProposals} contextNodeId={node.id} />
+				</div>
+			{/if}
+
 			<div class="preview-header">
 				<div class="type-area">
 					<button
@@ -560,6 +677,11 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode: false, nodeList
 	.integrate-btn:disabled {
 		opacity: 0.4;
 		cursor: default;
+	}
+
+	.proposals-section {
+		margin-bottom: 16px;
+		flex-shrink: 0;
 	}
 
 	/* Preview column */

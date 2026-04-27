@@ -1,4 +1,4 @@
-# Atlas — Agent Swarm Execution Plan
+# Butterfly — Agent Swarm Execution Plan
 
 40 self-contained work packages with explicit dependency DAGs. A swarm scheduler picks up whatever has all deps met. Each WP is sized for one agent (~1-4 days).
 
@@ -399,7 +399,7 @@ WAVE 10 ────────────────────────
 **Refs:** `06-deployment-modes.md` (Setup Commands)
 
 **Deliverables:**
-- `docker-compose.yml`: atlas-frontend + atlas-backend + postgres
+- `docker-compose.yml`: butterfly-frontend + butterfly-backend + postgres
 - Multi-stage `Dockerfile.backend`: build → slim runtime (~20MB)
 - `Dockerfile.frontend`: SvelteKit Node adapter
 - `.env.example` with all config vars
@@ -465,7 +465,7 @@ WAVE 10 ────────────────────────
 - [ ] Scanning a 500-PR repo completes in <2 minutes
 - [ ] PRs correctly classified into tickets with status based on merge state
 - [ ] Semantic grouping produces reasonable epic candidates
-- [ ] Synthetic events enable timeline scrubber for pre-Atlas history
+- [ ] Synthetic events enable timeline scrubber for pre-Butterfly history
 
 ---
 
@@ -1004,14 +1004,14 @@ WAVE 10 ────────────────────────
 **Refs:** `14-user-flows.md` Flow 18
 
 **Deliverables:**
-- Branch convention: `atlas/<project-slug>/<ticket-id>-<slug>`
+- Branch convention: `butterfly/<project-slug>/<ticket-id>-<slug>`
 - GitHub webhook: `create` event → parse ticket ID → auto-link → ticket status: "in-progress"
-- PR opened for Atlas branch → auto-populate PR body (ticket spec + context + AC checklist)
+- PR opened for Butterfly branch → auto-populate PR body (ticket spec + context + AC checklist)
 - GitHub API: PATCH PR body with rendered template
 - Multi-repo: scans all project repos for matching branches
 
 **Acceptance Criteria:**
-- [ ] Push branch `atlas/atlas/T-42-stripe-webhook` → ticket T-42 auto-linked
+- [ ] Push branch `butterfly/butterfly/T-42-stripe-webhook` → ticket T-42 auto-linked
 - [ ] PR body auto-populated with ticket spec
 - [ ] Multi-repo: branches detected in any project repo
 
@@ -1150,7 +1150,7 @@ WAVE 10 ────────────────────────
 **Refs:** `14-user-flows.md` Flow 17b-c
 
 **Deliverables:**
-- Per-agent model selector: dropdown of provider + model for each Atlas agent role
+- Per-agent model selector: dropdown of provider + model for each Butterfly agent role
 - Cost estimates shown inline (estimated $/1k calls based on model pricing)
 - "Use for all agents" button for quick setup
 - Daily spend limit: configurable cap, usage chart per agent per day

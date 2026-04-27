@@ -38,6 +38,23 @@ pub enum WsEvent {
         message: String,
         findings_count: Option<usize>,
     },
+    #[serde(rename = "cartographer.tool")]
+    CartographerTool {
+        agent_run_id: String,
+        tool: String,
+        summary: String,
+    },
+    #[serde(rename = "cartographer.finding")]
+    CartographerFinding {
+        agent_run_id: String,
+        finding: serde_json::Value,
+    },
+    #[serde(rename = "file.changed")]
+    FileChanged {
+        path: String,
+        action: String, // "created", "modified", "deleted"
+        project_id: String,
+    },
 }
 
 // ---------------------------------------------------------------------------

@@ -196,7 +196,7 @@ async fn github_get(
 ) -> Result<reqwest::Response, GithubError> {
     let mut req = client
         .get(url)
-        .header("User-Agent", "atlas-cartographer/1.0")
+        .header("User-Agent", "butterfly-cartographer/1.0")
         .header("Accept", "application/vnd.github+json")
         .header("X-GitHub-Api-Version", "2022-11-28");
 

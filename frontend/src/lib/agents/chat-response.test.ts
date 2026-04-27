@@ -2,139 +2,171 @@ import { describe, it, expect } from 'vitest';
 import { parseChatResponse } from './chat-response';
 
 describe('parseChatResponse', () => {
-	it('parses a valid JSON response', () => {
+	it('parses a valid JSON response with proposals', () => {
 		const raw = JSON.stringify({
 			message: 'Here are my thoughts.',
-			cardBody: '## Summary\n- Point one\n- Point two'
+			proposals: [
+				{
+					summary: 'Update note body',
+					rationale: 'Adding analysis',
+					op: { type: 'update_node', nodeId: 'n1', changes: { body: '## Summary' } }
+				}
+			]
 		});
 
 		const resp = parseChatResponse(raw);
 
 		expect(resp.message).toBe('Here are my thoughts.');
-		expect(resp.cardBody).toBe('## Summary\n- Point one\n- Point two');
-		expect(resp.proposals).toBeUndefined();
+		expect(resp.proposals).toHaveLength(1);
+		expect(resp.proposals[0].op.type).toBe('update_node');
 	});
 
 	it('parses JSON from a ```json code block', () => {
 		const raw = `\`\`\`json
 {
   "message": "Got it.",
-  "cardBody": "Updated content."
+  "proposals": []
 }
 \`\`\``;
 
 		const resp = parseChatResponse(raw);
 		expect(resp.message).toBe('Got it.');
-		expect(resp.cardBody).toBe('Updated content.');
+		expect(resp.proposals).toHaveLength(0);
 	});
 
 	it('extracts JSON from surrounding text', () => {
-		const raw = `Sure, here's the update: {"message": "Done.", "cardBody": "New body"} Hope that helps!`;
+		const raw = `Sure, here's the update: {"message": "Done.", "proposals": []} Hope that helps!`;
 		const resp = parseChatResponse(raw);
 		expect(resp.message).toBe('Done.');
-		expect(resp.cardBody).toBe('New body');
 	});
 
 	it('falls back to plain message when no JSON found', () => {
 		const raw = 'Just a normal text response with no structure.';
 		const resp = parseChatResponse(raw);
 		expect(resp.message).toBe(raw);
-		expect(resp.cardBody).toBeUndefined();
-		expect(resp.proposals).toBeUndefined();
+		expect(resp.proposals).toHaveLength(0);
 	});
 
-	it('parses proposals correctly', () => {
+	it('parses new-format proposals correctly', () => {
 		const raw = JSON.stringify({
 			message: 'Here are some proposed changes.',
-			cardBody: 'Updated note.',
 			proposals: [
 				{
+					summary: 'Create note for sub-topic A',
 					rationale: 'Break out sub-topics',
-					items: [
-						{
-							op: 'create_node',
-							data: { type: 'note', layer: 5, projectId: 'p1', title: 'Sub-topic A' },
-							_summary: 'Create note for sub-topic A'
-						},
-						{
-							op: 'update_node',
-							nodeId: 'n1',
-							patch: { status: 'active' },
-							_summary: 'Activate node'
-						}
-					]
+					op: {
+						type: 'create_node',
+						data: { nodeType: 'note', layer: 5, title: 'Sub-topic A', body: '' }
+					}
+				},
+				{
+					summary: 'Activate node',
+					rationale: 'Ready to work on',
+					op: { type: 'update_node', nodeId: 'n1', changes: { status: 'active' } }
 				}
 			]
 		});
 
 		const resp = parseChatResponse(raw);
 
-		expect(resp.proposals).toHaveLength(1);
-		expect(resp.proposals![0].id).toBe('proposal_0');
-		expect(resp.proposals![0].rationale).toBe('Break out sub-topics');
-		expect(resp.proposals![0].items).toHaveLength(2);
-		expect(resp.proposals![0].items[0].op).toBe('create_node');
-		expect(resp.proposals![0].items[1].op).toBe('update_node');
+		expect(resp.proposals).toHaveLength(2);
+		expect(resp.proposals[0].summary).toBe('Create note for sub-topic A');
+		expect(resp.proposals[0].op.type).toBe('create_node');
+		expect(resp.proposals[1].op.type).toBe('update_node');
 	});
 
-	it('parses cardMeta for new notes', () => {
+	it('resolves CURRENT nodeId to provided currentNodeId', () => {
 		const raw = JSON.stringify({
-			message: 'Great idea! I named it for you.',
+			message: 'Updated.',
+			proposals: [
+				{
+					summary: 'Update body',
+					rationale: 'test',
+					op: { type: 'update_node', nodeId: 'CURRENT', changes: { body: 'new' } }
+				}
+			]
+		});
+
+		const resp = parseChatResponse(raw, 'real-node-id');
+		const op = resp.proposals[0].op;
+		expect(op.type).toBe('update_node');
+		if (op.type === 'update_node') {
+			expect(op.nodeId).toBe('real-node-id');
+		}
+	});
+
+	it('backward compat: converts old cardBody to update_node proposal', () => {
+		const raw = JSON.stringify({
+			message: 'Great idea!',
+			cardBody: '## Purpose\nGauge community support.'
+		});
+
+		const resp = parseChatResponse(raw, 'node-123');
+		expect(resp.proposals.length).toBeGreaterThan(0);
+		const bodyProposal = resp.proposals.find(
+			(p) => p.op.type === 'update_node' && 'changes' in p.op && p.op.changes.body
+		);
+		expect(bodyProposal).toBeDefined();
+	});
+
+	it('backward compat: converts old cardMeta to update_node proposal', () => {
+		const raw = JSON.stringify({
+			message: 'Named it for you.',
 			cardMeta: {
 				title: 'Public Sentiment Analysis',
 				type: 'idea',
 				tags: ['research', 'community']
-			},
-			cardBody: '## Purpose\nGauge community support.'
+			}
 		});
 
-		const resp = parseChatResponse(raw);
-
-		expect(resp.cardMeta?.title).toBe('Public Sentiment Analysis');
-		expect(resp.cardMeta?.type).toBe('idea');
-		expect(resp.cardMeta?.tags).toEqual(['research', 'community']);
+		const resp = parseChatResponse(raw, 'node-123');
+		const metaProposal = resp.proposals.find(
+			(p) => p.op.type === 'update_node' && 'changes' in p.op && p.op.changes.title
+		);
+		expect(metaProposal).toBeDefined();
 	});
 
-	it('parses cardPayload for planning nodes', () => {
+	it('backward compat: converts old cardPayload to update_node proposal', () => {
 		const raw = JSON.stringify({
 			message: 'Updated the acceptance criteria.',
-			cardBody: 'Implement OAuth flow.',
 			cardPayload: { acceptanceCriteria: ['Login works', 'Tokens refresh'] }
 		});
 
-		const resp = parseChatResponse(raw);
-		expect(resp.cardPayload).toEqual({ acceptanceCriteria: ['Login works', 'Tokens refresh'] });
+		const resp = parseChatResponse(raw, 'node-123');
+		const payloadProposal = resp.proposals.find(
+			(p) => p.op.type === 'update_node' && 'changes' in p.op && p.op.changes.payload
+		);
+		expect(payloadProposal).toBeDefined();
 	});
 
-	it('defaults _summary to "Change" when missing', () => {
+	it('backward compat: converts legacy proposal items format', () => {
 		const raw = JSON.stringify({
 			message: 'Changes proposed.',
 			proposals: [
 				{
 					rationale: 'Test',
-					items: [{ op: 'delete_node', nodeId: 'x' }]
+					items: [{ op: 'delete_node', nodeId: 'x', _summary: 'Remove node' }]
 				}
 			]
 		});
 
 		const resp = parseChatResponse(raw);
-		expect(resp.proposals![0].items[0]._summary).toBe('Change');
+		expect(resp.proposals).toHaveLength(1);
+		expect(resp.proposals[0].op.type).toBe('delete_node');
 	});
 
 	it('handles empty message field', () => {
 		const raw = JSON.stringify({
-			cardBody: 'Content without message.'
+			proposals: []
 		});
 
 		const resp = parseChatResponse(raw);
 		expect(resp.message).toBe('');
-		expect(resp.cardBody).toBe('Content without message.');
 	});
 
 	it('handles malformed JSON gracefully', () => {
 		const raw = '{"message": "incomplete';
 		const resp = parseChatResponse(raw);
-		// Falls back to treating as plain text
 		expect(resp.message).toBe(raw);
 	});
 

@@ -26,8 +26,8 @@ export interface ModelResponse {
 	tokens: number;
 }
 
-const LS_KEY = 'atlas_provider_keys';
-const MODEL_PREFS_KEY = 'atlas_model_prefs';
+const LS_KEY = 'butterfly_provider_keys';
+const MODEL_PREFS_KEY = 'butterfly_model_prefs';
 
 // Preferred providers by capability (first = best)
 const CAPABILITY_PREFERENCE: Record<Capability, string[]> = {
@@ -45,17 +45,17 @@ const DEFAULT_MODELS: Record<string, Record<Capability, string>> = {
 		classification: 'claude-haiku-4-5-20251001',
 		edge_inference: 'claude-haiku-4-5-20251001',
 		embedding: 'claude-haiku-4-5-20251001',
-		synthesis: 'claude-haiku-4-5-20251001',
-		brain_dump: 'claude-haiku-4-5-20251001',
-		chat: 'claude-haiku-4-5-20251001'
+		synthesis: 'claude-sonnet-4-6',
+		brain_dump: 'claude-sonnet-4-6',
+		chat: 'claude-sonnet-4-6'
 	},
 	openai: {
 		classification: 'gpt-4o-mini',
 		edge_inference: 'gpt-4o-mini',
 		embedding: 'text-embedding-3-small',
-		synthesis: 'gpt-4o-mini',
-		brain_dump: 'gpt-4o-mini',
-		chat: 'gpt-4o-mini'
+		synthesis: 'gpt-4o',
+		brain_dump: 'gpt-4o',
+		chat: 'gpt-4o'
 	}
 };
 

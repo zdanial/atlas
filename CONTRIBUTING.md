@@ -1,6 +1,6 @@
-# Contributing to Atlas
+# Contributing to Butterfly
 
-Thanks for your interest in contributing to Atlas! This guide will help you get started.
+Thanks for your interest in contributing to Butterfly! This guide will help you get started.
 
 ## Development Setup
 
@@ -18,8 +18,8 @@ cp .env.example .env
 # Edit .env with your DATABASE_URL
 
 # Start PostgreSQL (if using Docker)
-docker run -d --name atlas-pg -p 5432:5432 \
-  -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=atlas \
+docker run -d --name butterfly-pg -p 5432:5432 \
+  -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=butterfly \
   postgres:16
 
 # Run the server (runs migrations automatically)

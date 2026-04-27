@@ -1,6 +1,6 @@
-# Atlas — Claude Code Context
+# Butterfly — Claude Code Context
 
-Atlas is a spatial thinking canvas that compiles brain dumps into structured specs, tickets, and exportable commands — with full traceability from idea to merged PR.
+Butterfly is a spatial thinking canvas that compiles brain dumps into structured specs, tickets, and exportable commands — with full traceability from idea to merged PR.
 
 ## Project Structure
 

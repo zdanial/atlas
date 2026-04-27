@@ -20,8 +20,6 @@ const CONTRADICTION_KEYWORDS = [
 	['but', 'however'],
 	['instead', 'rather'],
 	['wrong', 'right'],
-	['not', 'should'],
-	['against', 'for'],
 	['disagree', 'agree']
 ];
 
@@ -124,22 +122,24 @@ function analyzeRelation(a: Node, b: Node): InferredRelation[] {
 		});
 	}
 
-	// 4. Check for contradiction keywords
+	// 4. Check for contradiction keywords (gated by topic overlap)
 	const aText = getFullText(a).toLowerCase();
 	const bText = getFullText(b).toLowerCase();
-	for (const [kw1, kw2] of CONTRADICTION_KEYWORDS) {
-		if (
-			(aText.includes(kw1) && bText.includes(kw2)) ||
-			(aText.includes(kw2) && bText.includes(kw1))
-		) {
-			relations.push({
-				sourceId: a.id,
-				targetId: b.id,
-				relationType: 'contradicts',
-				confidence: 0.4,
-				reason: `Opposing keywords detected: ${kw1}/${kw2}`
-			});
-			break;
+	const topicOverlap = wordOverlap(aText, bText);
+	if (topicOverlap > 0.2) {
+		for (const [kw1, kw2] of CONTRADICTION_KEYWORDS) {
+			const re1 = new RegExp('\\b' + kw1 + '\\b');
+			const re2 = new RegExp('\\b' + kw2 + '\\b');
+			if ((re1.test(aText) && re2.test(bText)) || (re2.test(aText) && re1.test(bText))) {
+				relations.push({
+					sourceId: a.id,
+					targetId: b.id,
+					relationType: 'contradicts',
+					confidence: Math.min(0.6, topicOverlap * 1.5),
+					reason: `Opposing language (${kw1}/${kw2}) in topically related notes`
+				});
+				break;
+			}
 		}
 	}
 

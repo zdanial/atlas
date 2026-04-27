@@ -1,10 +1,7 @@
 <script lang="ts">
 	import { callChat, type ChatMessage } from '$lib/agents/providers';
-	import {
-		parseChatResponse,
-		responseFormatInstructions,
-		type ChatResponse
-	} from '$lib/agents/chat-response';
+	import { parseChatResponse, responseFormatInstructions } from '$lib/agents/chat-response';
+	import type { Proposal, ProposalOp } from '$lib/proposals';
 	import { getGlobalContext } from '$lib/stores/globalContext.svelte';
 	import { getProjectNodes } from '$lib/stores/nodes.svelte';
 	import { extractBodyText } from '$lib/node-types';
@@ -42,32 +39,30 @@
 
 	// --- Structured response handling ---
 
-	function applyChatResponse(resp: ChatResponse) {
-		const patch: Partial<Node> = {};
-		if (resp.cardMeta?.title) patch.title = resp.cardMeta.title;
-		if (resp.cardMeta?.type) patch.type = resp.cardMeta.type;
-		if (resp.cardBody) {
-			patch.body = {
-				type: 'doc',
-				content: [{ type: 'paragraph', content: [{ type: 'text', text: resp.cardBody }] }]
-			};
-		}
+	function autoApplyCurrentNodeProposals(proposals: Proposal[]) {
+		for (const proposal of proposals) {
+			if (proposal.op.type === 'update_node' && proposal.op.nodeId === node.id) {
+				const changes = proposal.op.changes;
+				const patch: Partial<Node> = {};
 
-		// Merge payload: tags from meta + type-specific fields from cardPayload
-		const payloadMerge: Record<string, unknown> = { ...(node.payload ?? {}) };
-		if (resp.cardMeta?.tags && resp.cardMeta.tags.length > 0) {
-			payloadMerge.tags = resp.cardMeta.tags;
-		}
-		if (resp.cardPayload) {
-			const { chatHistory: _ch, ...rest } = resp.cardPayload;
-			Object.assign(payloadMerge, rest);
-		}
-		if (resp.cardMeta?.tags || resp.cardPayload) {
-			patch.payload = payloadMerge;
-		}
+				if (changes.title) patch.title = changes.title;
+				if (changes.type) patch.type = changes.type;
+				if (changes.status) patch.status = changes.status;
+				if (changes.body) {
+					patch.body = {
+						type: 'doc',
+						content: [{ type: 'paragraph', content: [{ type: 'text', text: changes.body }] }]
+					};
+				}
+				if (changes.payload) {
+					const { chatHistory: _ch, ...rest } = changes.payload;
+					patch.payload = { ...(node.payload ?? {}), ...rest };
+				}
 
-		if (Object.keys(patch).length > 0) {
-			onUpdateNode(node.id, patch);
+				if (Object.keys(patch).length > 0) {
+					onUpdateNode(node.id, patch);
+				}
+			}
 		}
 	}
 
@@ -239,15 +234,19 @@ Only include fields you want to change.`;
 						.join('\n')}`
 				: '';
 
-		return `You are a thinking partner helping develop ideas in Atlas, a spatial planning tool.
+		const preamble = isPlanningNode
+			? `You are a planning decomposition assistant in Butterfly, a spatial planning tool. Your job is to help break down work into concrete, actionable pieces. When discussing a ${node.type}, always think about what the next level of breakdown should be and propose those as new nodes.`
+			: `You are a thinking partner in Butterfly, a spatial planning tool. Your job is to help explore ideas AND identify distinct threads, sub-topics, questions, and risks that deserve their own cards.`;
 
-The user is working on a ${node.type} titled: "${node.title}"
+		return `${preamble}
+
+The user is working on a ${node.type} titled: "${node.title}" (id: ${node.id})
 ${currentBody ? `\nDescription:\n${currentBody}` : ''}${payloadCtx}${hierarchyCtx}
-${gc ? `\nProject context:\n${gc}` : ''}
+${gc ? `\nGlobal project context (use this to align your responses):\n${gc}` : ''}
 ${plans ? `\nExisting plans:\n${plans}` : ''}${tagContext}
-${isPlanningNode && fieldInstructions ? `\n### Planning node payload fields:\n${fieldInstructions}\nInclude changed fields in "cardPayload" in your JSON response.` : ''}
+${isPlanningNode && fieldInstructions ? `\n### Planning node payload fields:\n${fieldInstructions}\nUpdate these via update_node proposals with changes.payload.` : ''}
 
-${responseFormatInstructions({ projectId, isNew, isPlanningNode, nodeListing })}`;
+${responseFormatInstructions({ projectId, currentNodeId: node.id, isNew, isPlanningNode, nodeListing })}`;
 	}
 
 	async function handleSend() {
@@ -265,7 +264,7 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode, nodeListing })}
 			const response = await callChat(buildSystemPrompt(), messages);
 
 			if (response) {
-				const resp = parseChatResponse(response.text);
+				const resp = parseChatResponse(response.text, node.id);
 
 				const entry: ChatHistoryEntry = {
 					role: 'assistant',
@@ -274,7 +273,7 @@ ${responseFormatInstructions({ projectId, isNew, isPlanningNode, nodeListing })}
 				};
 				const withReply = [...newHistory, entry];
 				savePayload(node, { chatHistory: withReply }, onUpdateNode);
-				applyChatResponse(resp);
+				autoApplyCurrentNodeProposals(resp.proposals);
 			}
 		} catch (e) {
 			console.error('Chat failed:', e);

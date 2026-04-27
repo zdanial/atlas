@@ -3,12 +3,14 @@
 		projects,
 		currentProjectId,
 		onSwitch,
-		onCreate
+		onCreate,
+		onDelete
 	}: {
 		projects: Array<{ id: string; name: string; color?: string | null }>;
 		currentProjectId: string;
 		onSwitch: (id: string) => void;
 		onCreate: () => void;
+		onDelete?: (id: string) => void;
 	} = $props();
 
 	let open = $state(false);
@@ -57,19 +59,45 @@
 			onclick={(e: MouseEvent) => e.stopPropagation()}
 		>
 			{#each projects as project (project.id)}
-				<button
-					class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors
+				<div
+					class="group flex w-full items-center gap-2 px-3 py-1.5 text-xs transition-colors
 						{project.id === currentProjectId
 						? 'bg-neutral-800 text-neutral-200'
 						: 'text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-300'}"
-					onclick={() => handleSwitch(project.id)}
 				>
-					<span
-						class="inline-block h-2 w-2 shrink-0 rounded-full"
-						style="background-color: {project.color ?? '#737373'}"
-					></span>
-					<span class="truncate">{project.name}</span>
-				</button>
+					<button
+						class="flex flex-1 items-center gap-2 text-left"
+						onclick={() => handleSwitch(project.id)}
+					>
+						<span
+							class="inline-block h-2 w-2 shrink-0 rounded-full"
+							style="background-color: {project.color ?? '#737373'}"
+						></span>
+						<span class="truncate">{project.name}</span>
+					</button>
+					{#if onDelete && projects.length > 1}
+						<button
+							class="ml-1 shrink-0 rounded p-0.5 text-neutral-600 opacity-0 transition-all hover:bg-red-900/40 hover:text-red-400 group-hover:opacity-100"
+							title="Delete project"
+							onclick={(e: MouseEvent) => {
+								e.stopPropagation();
+								if (confirm(`Delete "${project.name}" and all its nodes? This cannot be undone.`)) {
+									onDelete(project.id);
+									open = false;
+								}
+							}}
+						>
+							<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M6 18L18 6M6 6l12 12"
+								/>
+							</svg>
+						</button>
+					{/if}
+				</div>
 			{/each}
 
 			<div class="my-1 border-t border-neutral-800"></div>

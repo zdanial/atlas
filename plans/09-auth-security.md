@@ -1,4 +1,4 @@
-# Atlas — Auth, Security & Threat Model
+# Butterfly — Auth, Security & Threat Model
 
 Security architecture for an open-source tool that handles API keys, GitHub tokens, and codebase access.
 
@@ -69,7 +69,7 @@ Mode A (browser):
 
 Mode B/C (server):
   provider_config.api_key_enc → encrypted with AES-256-GCM
-  Encryption key from ATLAS_ENCRYPTION_KEY env var (generated on first run)
+  Encryption key from BUTTERFLY_ENCRYPTION_KEY env var (generated on first run)
   Keys decrypted only in-memory when making LLM calls
   Never logged, never returned in API responses (only masked: sk-ant-••••)
   Never sent to frontend — frontend only sees { providerId, status, capabilities }

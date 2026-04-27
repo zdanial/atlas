@@ -1,7 +1,7 @@
 /**
  * Zone navigation store.
  *
- * Atlas has three top-level zones:
+ * Butterfly has three top-level zones:
  * - notes: raw thinking, AI-assisted fleshing out
  * - planning: hierarchical structured planning (intents -> epics -> phases -> tickets)
  * - docs: auto-maintained project/code documentation

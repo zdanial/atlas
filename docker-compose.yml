@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: atlas
+      POSTGRES_DB: butterfly
     ports:
       - "6432:5432"
     volumes:
@@ -16,6 +16,31 @@ services:
       timeout: 3s
       retries: 5
 
+  claude-code:
+    build:
+      context: .
+      dockerfile: services/claude-code/Dockerfile
+    restart: unless-stopped
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+      PORT: 3002
+    volumes:
+      # Mount host home read-only so the cartographer can read user repos
+      # via the same path the backend uses (see backend.volumes).
+      - ${HOST_HOME:-${HOME}}:/host:ro
+      # Mount the user's claude CLI auth session read-write so the agent
+      # picks up the host login (subscription / oauth) and can refresh tokens.
+      - ${HOST_HOME:-${HOME}}/.claude:/host/.claude:rw
+    ports:
+      - "6300:3002"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3002/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
   backend:
     build:
       context: .
@@ -24,11 +49,19 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      claude-code:
+        condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/atlas
-      RUST_LOG: info
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/butterfly
+      RUST_LOG: butterfly_server=debug,info
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      CLAUDE_CODE_URL: http://claude-code:3002
+      HOME: /host
+    volumes:
+      # Mount host home read-only so the local-folder picker / cartographer
+      # can browse and read source folders on the developer's machine.
+      - ${HOST_HOME:-${HOME}}:/host:ro
     ports:
       - "6100:3001"
 

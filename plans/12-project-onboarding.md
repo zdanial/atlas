@@ -1,6 +1,6 @@
-# Atlas — Onboarding Existing Projects
+# Butterfly — Onboarding Existing Projects
 
-Most users won't start from a blank canvas. They have a repo with history, a backlog in Linear/Jira/Notion, scattered docs, and half-formed plans in their head. Atlas needs to meet them where they are and bootstrap a full L0–L5 graph from what already exists.
+Most users won't start from a blank canvas. They have a repo with history, a backlog in Linear/Jira/Notion, scattered docs, and half-formed plans in their head. Butterfly needs to meet them where they are and bootstrap a full L0–L5 graph from what already exists.
 
 ---
 
@@ -20,7 +20,7 @@ Most users won't start from a blank canvas. They have a repo with history, a bac
 │  │   project    │ │   folder     │ │   (paste)    │                │
 │  └──────────────┘ └──────────────┘ └──────────────┘                │
 │                                                                      │
-│  Step 2: Atlas Scans & Proposes a Graph                              │
+│  Step 2: Butterfly Scans & Proposes a Graph                              │
 │  ┌─────────────────────────────────────────────────────────────┐    │
 │  │  Scanning...                                                 │    │
 │  │  ✓ 847 commits across 14 contributors                       │    │
@@ -28,7 +28,7 @@ Most users won't start from a blank canvas. They have a repo with history, a bac
 │  │  ✓ 42 Linear issues imported                                │    │
 │  │  ✓ 8 Notion docs parsed                                     │    │
 │  │  ◌ Inferring project structure...                            │    │
-│  │  ◌ Classifying into Atlas layers...                          │    │
+│  │  ◌ Classifying into Butterfly layers...                          │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │                                                                      │
 │  Step 3: Review & Accept                                             │
@@ -50,7 +50,7 @@ Most users won't start from a blank canvas. They have a repo with history, a bac
 
 The richest source. A repo's git history, PRs, and file structure contain an enormous amount of implicit project knowledge.
 
-**What Atlas extracts:**
+**What Butterfly extracts:**
 
 ```
 Git History
@@ -115,9 +115,9 @@ impl GitHubScanner {
 
 ### 2. Linear Import
 
-**What Atlas extracts:**
+**What Butterfly extracts:**
 
-| Linear Entity | Atlas Node | Layer |
+| Linear Entity | Butterfly Node | Layer |
 |---|---|---|
 | Project | Intent (L4) | Maps to a milestone or strategic bet |
 | Cycle | Intent or Phase (L4/L2) | Depends on scope |
@@ -151,9 +151,9 @@ query ImportProject($projectId: String!) {
 
 ### 3. Jira Import
 
-**What Atlas extracts:**
+**What Butterfly extracts:**
 
-| Jira Entity | Atlas Node | Layer |
+| Jira Entity | Butterfly Node | Layer |
 |---|---|---|
 | Epic | Epic (L3) | Direct mapping |
 | Story / Task (done) | Ticket (L1) | With linked PR if branch name matches |
@@ -166,15 +166,15 @@ query ImportProject($projectId: String!) {
 
 ### 4. Notion Import
 
-**What Atlas extracts:**
+**What Butterfly extracts:**
 
-| Notion Entity | Atlas Node | Layer |
+| Notion Entity | Butterfly Node | Layer |
 |---|---|---|
 | Database row | Canvas note (L5) | Type inferred from properties |
 | Page (structured) | Epic (L3) | If it has sections like PRD, tech plan |
 | Page (unstructured) | Canvas notes (L5) | Split into paragraphs, each classified |
 | Inline database | Multiple canvas notes | One per row |
-| Relation properties | Edges | Mapped to Atlas relation types |
+| Relation properties | Edges | Mapped to Butterfly relation types |
 
 **API:** Notion API. OAuth integration.
 
@@ -203,7 +203,7 @@ docs/
 
 ### 6. Brain Dump (Paste)
 
-The simplest import: paste a wall of text, and Atlas breaks it into notes.
+The simplest import: paste a wall of text, and Butterfly breaks it into notes.
 
 ```
 User pastes:
@@ -213,7 +213,7 @@ Jake mentioned that the OAuth callback URL is hardcoded which is a problem
 for self-hosted deploys. Oh and the rate limiter is too aggressive on the
 login endpoint."
 
-Atlas creates:
+Butterfly creates:
 ├── Goal: "Ship auth by end of month"
 ├── Problem: "Token refresh broken — users getting logged out"
 ├── Idea: "SSO for enterprise"
@@ -239,7 +239,7 @@ A dedicated agent (the **Cartographer**) handles onboarding. It's not one of the
 
 1. **Scan** all connected sources in parallel
 2. **Deduplicate** across sources (same feature described in Linear issue AND Notion doc AND PR)
-3. **Classify** every entity into an Atlas layer and node type
+3. **Classify** every entity into an Butterfly layer and node type
 4. **Infer structure** — group nodes into Intents, Epics, Phases based on:
    - Explicit hierarchy (Linear project → issues, Jira epic → stories)
    - Semantic similarity (PR descriptions that talk about the same feature)
@@ -289,7 +289,7 @@ Event {
 }
 ```
 
-This means you can scrub the timeline back to before Atlas existed and see your project's history reconstructed.
+This means you can scrub the timeline back to before Butterfly existed and see your project's history reconstructed.
 
 ---
 
@@ -330,7 +330,7 @@ After initial onboarding, sources can be re-scanned:
 
 ## Source-Specific Mapping Details
 
-### GitHub PR → Atlas Graph (the deepest mapping)
+### GitHub PR → Butterfly Graph (the deepest mapping)
 
 A single merged PR generates multiple nodes:
 
@@ -388,7 +388,7 @@ CREATE TABLE import_source (
   created_at    TIMESTAMPTZ DEFAULT now()
 );
 
--- Map imported entities to Atlas nodes (for dedup + incremental sync)
+-- Map imported entities to Butterfly nodes (for dedup + incremental sync)
 CREATE TABLE import_mapping (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   source_id     UUID NOT NULL REFERENCES import_source(id),
@@ -436,9 +436,9 @@ CREATE INDEX idx_import_mapping_external ON import_mapping(source_id, external_i
 
 ## Onboarding UX Principles
 
-1. **Never start blank.** If a user connects a repo, Atlas should have a populated graph within 2 minutes. An empty canvas after connecting a 500-PR repo is a failure.
+1. **Never start blank.** If a user connects a repo, Butterfly should have a populated graph within 2 minutes. An empty canvas after connecting a 500-PR repo is a failure.
 2. **Low-confidence = visible.** Don't hide uncertainty. Show the user where the Cartographer is guessing so they can correct it.
-3. **Imports are additive.** Importing never deletes or overwrites existing Atlas nodes. New imports merge alongside existing work.
+3. **Imports are additive.** Importing never deletes or overwrites existing Butterfly nodes. New imports merge alongside existing work.
 4. **Source provenance is permanent.** Every imported node knows where it came from. "This Epic was derived from Linear issue PROJ-142 + Notion page 'Payments Spec' + PRs #130-#145."
-5. **Timeline from day zero.** Backfilled events mean the scrubber works immediately. The user can see their project's history from before Atlas existed.
+5. **Timeline from day zero.** Backfilled events mean the scrubber works immediately. The user can see their project's history from before Butterfly existed.
 6. **Incremental, not all-or-nothing.** Users can import one source now, another next week. Each import enriches the graph.
